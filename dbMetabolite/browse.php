@@ -70,7 +70,8 @@ if (!empty($_GET['diseases'])) {
 
         // 計算總筆數（disease 欄位尚未建立，暫時顯示全部資料）
         $countRes   = $db->query("SELECT COUNT(*) AS cnt FROM metabolites_id");
-        $total      = (int)$countRes->fetch_assoc()['cnt'];
+        $countRow = $countRes->fetch(PDO::FETCH_ASSOC);
+        $total    = (int)$countRow['cnt'];
         $totalPages = max(1, (int)ceil($total / PER_PAGE));
 
         // 固定欄位
@@ -94,7 +95,7 @@ if (!empty($_GET['diseases'])) {
             $errorMsg    = '查詢失敗：' . $db->error;
             $showResults = false;
         } else {
-            while ($row = $res->fetch_assoc()) $results[] = $row;
+            while ($row = $res->fetch(PDO::FETCH_ASSOC)) $results[] = $row;
         }
     }
 }

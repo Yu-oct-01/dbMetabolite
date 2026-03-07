@@ -39,3 +39,4 @@ require_once 'config.php';
 <script src="js/main.js"></script>
 </body>
 </html>
+

@@ -5,15 +5,16 @@ $host   = "127.0.0.1";
 $user   = "root";
 $pass   = "88888888";
 $dbname = "metabolites";
-function getDB() {
+function getDB(): PDO {
     global $host, $user, $pass, $dbname;
-    static $conn = null;
-    if ($conn === null) {
-        $conn = new mysqli($host, $user, $pass, $dbname);
-        $conn->set_charset("utf8mb4");
-        if ($conn->connect_error) {
-            die("資料庫連線失敗: " . $conn->connect_error);
-        }
+    static $pdo = null;
+    if ($pdo === null) {
+        $pdo = new PDO(
+            "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+            $user,
+            $pass,
+            [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+        );
     }
-    return $conn;
+    return $pdo;
 }
