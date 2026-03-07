@@ -60,33 +60,6 @@ require_once 'config.php';
                 &emsp;&emsp;&emsp; Some metabolites can be used for disease diagnosis, prognostic assessment, or tracking of treatment effectiveness.<br>
             </p>
     </div>
-
-    <!-- 數據表格 -->
-    <div class="table-section">
-        <h2>Data type summary</h2>
-        <p>The following table displays statistical information for various types of data in the database:</p>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Metabolite name</th>
-                    <th>Class A</th>
-                    <th>Class B</th>
-                    <th>Class C</th>
-                    <th>Class D</th>
-                    <th>Class E</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- 連上資料庫後，把下面換成 PHP while($row = $stmt->fetch()) 迴圈 -->
-                <tr><td><a href="#">名稱一</a></td><td>1,250</td><td>3,456</td><td>890</td><td>2,340</td><td>5,678</td><td>13,614</td></tr>
-                <tr><td><a href="#">名稱二</a></td><td>890</td><td>2,345</td><td>1,234</td><td>3,456</td><td>4,567</td><td>12,492</td></tr>
-                <tr><td><a href="#">名稱三</a></td><td>2,340</td><td>5,678</td><td>890</td><td>1,234</td><td>3,456</td><td>13,598</td></tr>
-                <tr><td><a href="#">名稱四</a></td><td>5,678</td><td>1,234</td><td>3,456</td><td>2,340</td><td>890</td><td>13,598</td></tr>
-                <tr><td><a href="#">名稱五</a></td><td>3,456</td><td>890</td><td>2,340</td><td>5,678</td><td>1,234</td><td>13,598</td></tr>
-            </tbody>
-        </table>
-    </div>
 </div>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>
