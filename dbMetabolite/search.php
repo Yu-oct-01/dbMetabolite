@@ -53,7 +53,7 @@ ini_set('display_errors', 1);
         </div>
         <label style="display:block; margin-bottom:8px; font-weight:600;">Input the ID</label>
         <input type="text" name="keyword"
-               placeholder="(eg. HMDB0000259 / CHEBI:28790 / CID5202)"
+               placeholder="(eg. HMDB0000259 / CHEBI:28790 / PubChem CID 12591)"
                style="width:100%; padding:12px 15px; border:2px solid #ddd; border-radius:4px; font-size:16px; margin-bottom:15px;">
         <div style="display:flex; gap:10px;">
             <button type="submit" class="btn btn-primary">Search</button>
