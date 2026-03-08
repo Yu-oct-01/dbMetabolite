@@ -13,19 +13,19 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <a href="search.php" class="nav-link <?= $currentPage === 'search.php' ? 'active' : '' ?>">Search</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?= in_array($currentPage, ['browse.php']) ? 'active' : '' ?>">Browse ▼</a>
+                <a class="nav-link <?= in_array($currentPage, ['metabolites.php']) ? 'active' : '' ?>">Browse ▼</a>
                 <div class="dropdown-menu">
-                    <a href="browse.php">Metabolites</a>
-                    <a href="#">file2</a>
+                    <a href="metabolites.php">Metabolites</a>
+                    <a href="clinicaldata.php">Clinical Data</a>
                     <a href="#">file3</a>
                 </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= in_array($currentPage, ['analysis.php']) ? 'active' : '' ?>">Analysis ▼</a>
                 <div class="dropdown-menu">
-                    <a href="analysis.php">Data analysis</a>
-                    <a href="#">Trend analysis</a>
-                    <a href="#">Survival analysis</a>
+                    <a href="#">file1</a>
+                    <a href="#">file2</a>
+                    <a href="#">file3</a>
                 </div>
             </li>
             <li class="nav-item">

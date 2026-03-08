@@ -17,6 +17,7 @@ require_once 'config.php';
 <?php include BASE_PATH . 'includes/navbar.php'; ?>
 
 <div class="container">
+    <h1 style="color:#2c3e50; margin-bottom:30px;">Statistic Data</h1>
     <!-- 數據表格 -->
     <div class="table-section">
         <table class="data-table">

@@ -1,23 +1,17 @@
 <?php
 // =============================================
-// browse.php  —  瀏覽代謝物
+// clinicaldata.php  —  瀏覽臨床資料
 // =============================================
 require_once 'config.php';
 
 // 所有可選欄位（白名單）
 $allFields = [
-    'hmdb_id'          => 'HMDB ID',
-    'chebi_id'         => 'ChEBI ID',
-    'pubchem_id'       => 'PubChem ID',
-    'avg_expression'   => 'Average Expression',
-    'isomers'          => 'Isomers (RT/RI)',
-    'immune_cells'     => 'Immune Cell Related',
-    'pathway'          => 'Pathway',
-    'drug_response'    => 'Drug Response',
-    'immune_status'    => 'Immune Hot/Cold',
-    'stemness'         => 'Tumor Stemness',
-    'hazard_ratio'     => 'Hazard Ratio',
-    'molecular_subtype'=> 'Molecular Subtype',
+    'gender'          => 'Gender',
+    'age'             => 'Age',
+    'blood_type'      => 'Blood Type',
+    'tumor_stage'     => 'Tumor Stage',
+    'survival_status' => 'Survival Status',
+    // 之後有新欄位在這裡新增即可
 ];
 
 $diseaseOptions = [
@@ -25,28 +19,28 @@ $diseaseOptions = [
     'others' => 'Others',
 ];
 
-// 目前 metabolites_id 資料表實際存在的欄位對應
+// 資料表中實際存在的欄位對應
 // key = $allFields 的 key，value = 資料表實際欄位名稱
-// 尚未建立的欄位不列在這裡，查詢時會自動填空白
+// 尚未建立的欄位先不列，查詢時自動顯示 -
 $existingCols = [
-    'hmdb_id'    => 'HMDB_ID',
-    'chebi_id'   => 'CHEBI_ID',
-    'pubchem_id' => 'Pubchem_ID',
+    // 確認欄位名稱後，移除下方對應的 // 即可啟用
+    // 'gender'          => 'gender',
+    // 'age'             => 'age',
+    // 'blood_type'      => 'blood_type',
+    // 'tumor_stage'     => 'tumor_stage',
+    // 'survival_status' => 'survival_status',
 ];
 
-// link 欄位對應
-$linkCols = [
-    'hmdb_id'    => 'HMDB_link',
-    'chebi_id'   => 'CHEBI_link',
-    'pubchem_id' => 'Pubchem_link',
-];
+// 固定顯示的主鍵欄位（請依實際資料表調整）
+$primaryKey   = 'patient_id';  // 資料表主鍵欄位名稱
+$primaryLabel = 'Patient ID';  // 顯示標題
 
 // 初始化
-$showResults   = false;
-$results       = [];
-$total         = 0;
-$totalPages    = 1;
-$errorMsg      = '';
+$showResults = false;
+$results     = [];
+$total       = 0;
+$totalPages  = 1;
+$errorMsg    = '';
 
 // 分頁
 $page   = max(1, (int)($_GET['page'] ?? 1));
@@ -56,43 +50,40 @@ $offset = ($page - 1) * PER_PAGE;
 if (!empty($_GET['diseases'])) {
     $showResults = true;
 
-    // 驗證疾病選項（白名單）— 目前資料表無 disease 欄位，先忽略篩選直接顯示全部
+    // 驗證疾病選項（白名單）
     $diseases = array_intersect((array)$_GET['diseases'], array_keys($diseaseOptions));
 
     // 驗證欄位選項（白名單）
     $selectedFields = array_intersect((array)($_GET['fields'] ?? []), array_keys($allFields));
 
     if (empty($diseases)) {
-        $errorMsg = 'Please select at least one disease category.';
+        $errorMsg    = 'Please select at least one disease category.';
         $showResults = false;
     } else {
-        $db = getDB();   // mysqli 連線
+        $db = getDB();
 
-        // 計算總筆數（disease 欄位尚未建立，暫時顯示全部資料）
-        $countRes   = $db->query("SELECT COUNT(*) AS cnt FROM metabolites_id");
+        // 計算總筆數
+        $countRes = $db->query("SELECT COUNT(*) AS cnt FROM clinicaldata");
         $countRow = $countRes->fetch(PDO::FETCH_ASSOC);
         $total    = (int)$countRow['cnt'];
         $totalPages = max(1, (int)ceil($total / PER_PAGE));
 
         // 固定欄位
-        $selectCols = ['DMTDB_ID', 'metabolite_name'];
+        $selectCols = [$primaryKey];
 
-        // 只 SELECT 資料表中實際存在的欄位；其餘欄位在 PHP 端補 -
+        // 只 SELECT 資料表中實際存在的欄位
         foreach ($selectedFields as $f) {
             if (isset($existingCols[$f])) {
                 $selectCols[] = $existingCols[$f];
-                if (isset($linkCols[$f])) {
-                    $selectCols[] = $linkCols[$f];
-                }
             }
         }
         $selectCols = array_unique($selectCols);
         $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
         $limit      = PER_PAGE;
 
-        $res = $db->query("SELECT $colsSql FROM metabolites_id ORDER BY DMTDB_ID LIMIT $offset, $limit");
+        $res = $db->query("SELECT $colsSql FROM clinicaldata ORDER BY `$primaryKey` LIMIT $offset, $limit");
         if (!$res) {
-            $errorMsg    = '查詢失敗：' . $db->error;
+            $errorMsg    = '查詢失敗：' . $db->errorInfo()[2];
             $showResults = false;
         } else {
             while ($row = $res->fetch(PDO::FETCH_ASSOC)) $results[] = $row;
@@ -112,7 +103,7 @@ function pageUrl(int $p): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metabolite Database - Browse</title>
+    <title>Metabolite Database - Clinical Data</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/browse.css">
 </head>
@@ -125,9 +116,9 @@ function pageUrl(int $p): string {
     <!-- ===== 選擇區域 ===== -->
     <?php if (!$showResults): ?>
     <div class="selection-container">
-        <h1 style="margin-bottom:1.5rem; color:#2c3e50;">Browse Metabolites</h1>
+        <h1 style="margin-bottom:1.5rem; color:#2c3e50;">Browse Clinical Data</h1>
 
-        <form method="GET" action="browse.php" id="browseForm">
+        <form method="GET" action="clinicaldata.php" id="browseForm">
 
             <!-- 疾病選擇 -->
             <div class="selection-section">
@@ -148,7 +139,7 @@ function pageUrl(int $p): string {
             <!-- 欄位選擇 -->
             <div class="selection-section">
                 <div class="section-title">2. Select Additional Data Fields to Display</div>
-                <div class="section-subtitle">Metabolite ID and Name are always displayed. Choose additional information:</div>
+                <div class="section-subtitle">Patient ID is always displayed. Choose additional information:</div>
                 <div class="chips-container">
                     <?php foreach ($allFields as $val => $label): ?>
                         <label class="chip <?= in_array($val, (array)($_GET['fields'] ?? [])) ? 'selected' : '' ?>">
@@ -173,7 +164,7 @@ function pageUrl(int $p): string {
 
     <!-- ===== 結果區域 ===== -->
     <div class="table-container show">
-        <a href="browse.php" class="btn-back">← Back to Selection</a>
+        <a href="clinicaldata.php" class="btn-back">← Back to Selection</a>
 
         <?php if ($errorMsg): ?>
             <div class="alert alert-danger"><?= htmlspecialchars($errorMsg) ?></div>
@@ -192,8 +183,7 @@ function pageUrl(int $p): string {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Metabolite ID</th>
-                        <th>Metabolite Name</th>
+                        <th><?= htmlspecialchars($primaryLabel) ?></th>
                         <?php foreach ($selectedFields as $f): ?>
                             <th><?= htmlspecialchars($allFields[$f]) ?></th>
                         <?php endforeach; ?>
@@ -201,45 +191,20 @@ function pageUrl(int $p): string {
                 </thead>
                 <tbody>
                 <?php if (empty($results)): ?>
-                    <tr><td colspan="<?= 2 + count($selectedFields) ?>" style="text-align:center; color:#999;">No records found.</td></tr>
+                    <tr><td colspan="<?= 1 + count($selectedFields) ?>" style="text-align:center; color:#999;">No records found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($results as $row): ?>
                     <tr>
-                        <td>
-                            <a href="metabolite.php?id=<?= urlencode($row['DMTDB_ID']) ?>">
-                            <?= htmlspecialchars($row['DMTDB_ID']) ?>
-                            </a>
-			</td>
-			<td><?= htmlspecialchars($row['metabolite_name']) ?></td>
+                        <td><?= htmlspecialchars($row[$primaryKey]) ?></td>
                         <?php foreach ($selectedFields as $f): ?>
                         <td>
                             <?php
-                            // 若欄位尚未建立，直接顯示空白
                             if (!isset($existingCols[$f])) {
                                 echo '-';
                             } else {
                                 $colName = $existingCols[$f];
                                 $val     = $row[$colName] ?? '';
-                                if ($val === '' || $val === null) {
-                                    echo '-';
-                                } elseif ($f === 'hmdb_id') {
-                                    $link = $row['HMDB_link'] ?? '';
-                                    echo $link
-                                        ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
-                                        : htmlspecialchars($val);
-                                } elseif ($f === 'chebi_id') {
-                                    $link = $row['CHEBI_link'] ?? '';
-                                    echo $link
-                                        ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
-                                        : htmlspecialchars($val);
-                                } elseif ($f === 'pubchem_id') {
-                                    $link = $row['Pubchem_link'] ?? '';
-                                    echo $link
-                                        ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
-                                        : htmlspecialchars($val);
-                                } else {
-                                    echo htmlspecialchars($val);
-                                }
+                                echo ($val === '' || $val === null) ? '-' : htmlspecialchars($val);
                             }
                             ?>
                         </td>
@@ -262,7 +227,7 @@ function pageUrl(int $p): string {
 </div>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>
-<link rel="stylesheet" href="css/browse.css">
+
 <script>
 document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', function () {
