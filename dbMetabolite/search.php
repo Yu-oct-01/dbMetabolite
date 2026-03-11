@@ -69,7 +69,7 @@ ini_set('display_errors', 1);
         <label style="display:block; margin-bottom:10px; font-weight:600;">Select a Category</label>
         <div style="display:flex; gap:20px; margin-bottom:15px;">
             <label><input type="radio" name="search_field" value="synonym"> KEGG</label>
-            <label><input type="radio" name="search_field" value="traditional"> HMDB</label>
+            <label><input type="radio" name="search_field" value="hmdb-synonym"> HMDB</label>
         </div>
         <label style="display:block; margin-bottom:8px; font-weight:600;">Input the Keyword</label>
         <input type="text" name="keyword"

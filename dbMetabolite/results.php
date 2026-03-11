@@ -51,14 +51,14 @@ $allowedFields = [
     'synonym' => [
         'table'  => 'metabolites',
         'column' => 'synonym_name',
-        'label'  => 'Synonym',
+        'label'  => 'Synonym (KEGG)',
         'group'  => 'synonym',
     ],
-    'traditional' => [
-        'table'  => 'metabolites',
-        'column' => 'traditional_name',
-        'label'  => 'Traditional Name',
-        'group'  => 'synonym',
+    'hmdb-synonym' => [
+        'table'  => 'hmdb_synonyms',
+        'column' => 'synonyms',
+        'label'  => 'Synonym (HMDB)',
+        'group'  => 'hmdb-synonym',
     ],
 ];
 
@@ -94,6 +94,34 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
                  FROM `$tbl`
                  WHERE `$col` LIKE :kw
                  ORDER BY DMTDB_ID
+                 LIMIT :limit OFFSET :offset"
+            );
+            $stmt->bindValue(':kw',     "%$keyword%");
+            $stmt->bindValue(':limit',  PER_PAGE, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
+            $stmt->execute();
+            $results = $stmt->fetchAll();
+
+        } elseif ($group === 'hmdb-synonym') {
+            // 查 hmdb_synonyms，再 JOIN metabolites_id 取 DMTDB_ID
+            $stmtCount = $db->prepare(
+                "SELECT COUNT(DISTINCT hs.HMDB_ID)
+                 FROM hmdb_synonyms hs
+                 WHERE hs.`$col` LIKE :kw"
+            );
+            $stmtCount->execute([':kw' => "%$keyword%"]);
+            $total = (int)$stmtCount->fetchColumn();
+
+            $stmt = $db->prepare(
+                "SELECT mi.DMTDB_ID,
+                        hs.metabolite_name,
+                        hs.HMDB_ID,
+                        GROUP_CONCAT(DISTINCT hs.synonyms ORDER BY hs.synonyms SEPARATOR ' | ') AS matched_synonyms
+                 FROM hmdb_synonyms hs
+                 LEFT JOIN metabolites_id mi ON mi.HMDB_ID = hs.HMDB_ID
+                 WHERE hs.`$col` LIKE :kw
+                 GROUP BY hs.HMDB_ID, hs.metabolite_name, mi.DMTDB_ID
+                 ORDER BY mi.DMTDB_ID
                  LIMIT :limit OFFSET :offset"
             );
             $stmt->bindValue(':kw',     "%$keyword%");
@@ -178,6 +206,9 @@ function pageUrl(int $p): string {
                             <th>Metabolite Name</th>
                             <?php if ($group === 'id'): ?>
                                 <th><?= htmlspecialchars($searchType) ?></th>
+                            <?php elseif ($group === 'hmdb-synonym'): ?>
+                                <th>HMDB ID</th>
+                                <th>Matched Synonyms</th>
                             <?php else: ?>
                                 <th>HMDB ID</th>
                                 <th>ChEBI ID</th>
@@ -202,6 +233,15 @@ function pageUrl(int $p): string {
                                         </a>
                                     <?php else: ?>-<?php endif; ?>
                                 </td>
+                            <?php elseif ($group === 'hmdb-synonym'): ?>
+                                <td>
+                                    <?php if (!empty($row['HMDB_ID'])): ?>
+                                        <a href="https://hmdb.ca/metabolites/<?= urlencode($row['HMDB_ID']) ?>" target="_blank">
+                                            <?= htmlspecialchars($row['HMDB_ID']) ?>
+                                        </a>
+                                    <?php else: ?>-<?php endif; ?>
+                                </td>
+                                <td><?= htmlspecialchars($row['matched_synonyms'] ?? '-') ?></td>
                             <?php else: ?>
                                 <td>
                                     <?php if (!empty($row['HMDB_ID'])): ?>
