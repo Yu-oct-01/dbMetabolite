@@ -1,6 +1,16 @@
 cconfig.php 檔的 pass 要改成自己的密碼
 
 dbMetabolite/
+├──metabolite/
+│   ├── dmtdb000001/
+│         ├──index.php
+│   ├── dmtdb000002/
+│         ├──index.php
+├──clinicaldata/
+│   ├── C1230738/
+│         ├──index.php
+│   ├── C1245129/
+│         ├──index.php
 ├── README.md
 ├── clinicaldata.php
 ├── config.php (資料庫連線設定)
