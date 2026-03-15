@@ -4,7 +4,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 <nav class="navbar">
     <div class="navbar-container">
-        <a href="index.php" class="logo">Metabolite Database</a>
+        <a href="index.php" class="logo">Disease Metabolite Database</a>
         <ul class="nav-menu">
             <li class="nav-item">
                 <a href="statistics.php" class="nav-link <?= $currentPage === 'statistics.php' ? 'active' : '' ?>">Statistic</a>

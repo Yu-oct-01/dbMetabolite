@@ -6,11 +6,22 @@ require_once 'config.php';
 
 // 所有可選欄位（白名單）
 $allFields = [
-    'gender'          => 'Gender',
-    'age'             => 'Age',
-    'blood_type'      => 'Blood Type',
-    'tumor_stage'     => 'Tumor Stage',
-    'survival_status' => 'Survival Status',
+    'sex'                               => 'Sex',
+    'race'                              => 'Race',
+    'diagnosis_age'                     => 'Age at Diagnosis',
+
+    'disease_type'                      => 'Disease Type',
+    'primary_site'                      => 'Primary Site',
+    'site of resection or biopsy'       => 'Site of Resection or Biopsy',
+
+    'vital status'                      => 'Vital Status',
+    'cause of death'                    => 'Cause of Death',
+    'days to death'                     => 'Days to Death',
+    'progression or recurrence'         => 'Progression or Recurrence',
+    'last known disease status'         => 'Last Known Disease Status',
+    'days to last known disease status' => 'Days to Last Known Disease Status',
+
+    'alcohol intensity'                 => 'Alcohol Intensity',
     // 之後有新欄位在這裡新增即可
 ];
 
@@ -19,21 +30,37 @@ $diseaseOptions = [
     'others' => 'Others',
 ];
 
-// 資料表中實際存在的欄位對應
-// key = $allFields 的 key，value = 資料表實際欄位名稱
-// 尚未建立的欄位先不列，查詢時自動顯示 -
-$existingCols = [
-    // 確認欄位名稱後，移除下方對應的 // 即可啟用
-    // 'gender'          => 'gender',
-    // 'age'             => 'age',
-    // 'blood_type'      => 'blood_type',
-    // 'tumor_stage'     => 'tumor_stage',
-    // 'survival_status' => 'survival_status',
+// 各 disease 對應的資料來源（資料表清單）
+// 尚無資料的 disease 留空陣列，之後補充資料表名稱即可
+$diseaseSources = [
+    'glioma' => [
+        'tables' => ['cptac3_pdc000546_clinicaldata', 'cptac3_pdc000552_clinicaldata'],
+    ],
+    'others' => [
+        'tables' => [],   // 尚無資料，之後補充
+    ],
 ];
 
-// 固定顯示的主鍵欄位（請依實際資料表調整）
-$primaryKey   = 'patient_id';  // 資料表主鍵欄位名稱
-$primaryLabel = 'Patient ID';  // 顯示標題
+// $allFields key → 資料表實際欄位名稱
+$existingCols = [
+    'sex'                               => 'Sex',
+    'race'                              => 'Race',
+    'diagnosis_age'                     => 'Age at Diagnosis',
+    'disease_type'                      => 'Disease Type',
+    'primary_site'                      => 'Primary Site',
+    'site of resection or biopsy'       => 'Site of Resection or Biopsy',
+    'vital status'                      => 'Vital Status',
+    'cause of death'                    => 'Cause of Death',
+    'days to death'                     => 'Days to Death',
+    'progression or recurrence'         => 'Progression or Recurrence',
+    'last known disease status'         => 'Last Known Disease Status',
+    'days to last known disease status' => 'Days to Last Known Disease Status',
+    'alcohol intensity'                 => 'Alcohol Intensity',
+];
+
+// 固定顯示的主鍵欄位
+$primaryKey   = 'Case Submitter ID';
+$primaryLabel = 'Patient ID';
 
 // 初始化
 $showResults = false;
@@ -62,16 +89,8 @@ if (!empty($_GET['diseases'])) {
     } else {
         $db = getDB();
 
-        // 計算總筆數
-        $countRes = $db->query("SELECT COUNT(*) AS cnt FROM clinicaldata");
-        $countRow = $countRes->fetch(PDO::FETCH_ASSOC);
-        $total    = (int)$countRow['cnt'];
-        $totalPages = max(1, (int)ceil($total / PER_PAGE));
-
-        // 固定欄位
+        // 組合要 SELECT 的欄位
         $selectCols = [$primaryKey];
-
-        // 只 SELECT 資料表中實際存在的欄位
         foreach ($selectedFields as $f) {
             if (isset($existingCols[$f])) {
                 $selectCols[] = $existingCols[$f];
@@ -79,14 +98,37 @@ if (!empty($_GET['diseases'])) {
         }
         $selectCols = array_unique($selectCols);
         $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
-        $limit      = PER_PAGE;
 
-        $res = $db->query("SELECT $colsSql FROM clinicaldata ORDER BY `$primaryKey` LIMIT $offset, $limit");
-        if (!$res) {
-            $errorMsg    = '查詢失敗：' . $db->errorInfo()[2];
-            $showResults = false;
+        // 組合 UNION：每個 disease 的每張資料表各產生一段 SELECT
+        $unionParts = [];
+        foreach ($diseases as $d) {
+            if (empty($diseaseSources[$d]['tables'])) continue;
+
+            foreach ($diseaseSources[$d]['tables'] as $tbl) {
+                $unionParts[] = "SELECT $colsSql FROM `$tbl`";
+            }
+        }
+
+        if (empty($unionParts)) {
+            $total      = 0;
+            $totalPages = 1;
+            $results    = [];
         } else {
-            while ($row = $res->fetch(PDO::FETCH_ASSOC)) $results[] = $row;
+            $unionSql = implode(' UNION ALL ', $unionParts);
+
+            $countRes = $db->query("SELECT COUNT(*) AS cnt FROM ($unionSql) AS _combined");
+            $countRow = $countRes->fetch(PDO::FETCH_ASSOC);
+            $total      = (int)$countRow['cnt'];
+            $totalPages = max(1, (int)ceil($total / PER_PAGE));
+
+            $limit = PER_PAGE;
+            $res   = $db->query("SELECT * FROM ($unionSql) AS _combined ORDER BY `$primaryKey` LIMIT $offset, $limit");
+            if (!$res) {
+                $errorMsg    = 'Query failed: ' . $db->errorInfo()[2];
+                $showResults = false;
+            } else {
+                while ($row = $res->fetch(PDO::FETCH_ASSOC)) $results[] = $row;
+            }
         }
     }
 }
@@ -195,7 +237,11 @@ function pageUrl(int $p): string {
                 <?php else: ?>
                     <?php foreach ($results as $row): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row[$primaryKey]) ?></td>
+                        <td>
+                            <a href="clinicaldata/<?= urlencode($row[$primaryKey]) ?>/">
+                                <?= htmlspecialchars($row[$primaryKey]) ?>
+                            </a>
+                        </td>
                         <?php foreach ($selectedFields as $f): ?>
                         <td>
                             <?php
