@@ -1,3 +1,4 @@
+
 <?php
 // =============================================
 // clinicaldata/[Patient ID]/index.php  —  病人個別頁面
@@ -42,9 +43,7 @@ $fieldGroups = [
     'Exposure' => [
         'Alcohol Intensity',
     ],
-    'Metabolites' => [
-        
-    ],
+    // Metabolites 由 expression 資料動態產生，不走 fieldGroups
 ];
 
 $db  = getDB();
@@ -60,6 +59,53 @@ foreach ($tables as $tbl) {
         break;
     }
 }
+
+// ── 代謝物表達量查詢 ──────────────────────────────────────────
+// 兩張 expression 表，欄位名稱即病人 ID；值不為 NULL 才列出
+$expressionTables = [
+    'cptac3_pdc000546_expressiondata',
+    'cptac3_pdc000552_expressiondata',
+];
+
+$metabolites = [];   // [ ['DMTDB_ID'=>..., 'metabolite_name'=>..., 'value'=>...], ... ]
+
+foreach ($expressionTables as $eTbl) {
+    // 先確認該表有沒有這個病人 ID 的欄位（避免 SQL 錯誤）
+    $colCheck = $db->prepare(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = ?
+           AND COLUMN_NAME  = ?"
+    );
+    $colCheck->execute([$eTbl, $patientId]);
+    if ((int)$colCheck->fetchColumn() === 0) {
+        continue;   // 此表沒有這個病人，跳過
+    }
+
+    // 欄名含特殊字元（-），用 backtick 包；PDO 不支援 bind 欄名，用白名單驗證後直接內嵌
+    // patientId 已確保來自 URL，再做一次格式驗證
+    if (!preg_match('/^[A-Za-z0-9\-]+$/', $patientId)) {
+        continue;
+    }
+
+    $colEscaped = '`' . $patientId . '`';
+    $stmt = $db->prepare(
+        "SELECT `DMTDB_ID`, `metabolite_name`, $colEscaped AS `expr_value`
+         FROM `$eTbl`
+         WHERE $colEscaped IS NOT NULL"
+    );
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($rows as $r) {
+        $metabolites[] = [
+            'DMTDB_ID'       => $r['DMTDB_ID'],
+            'metabolite_name'=> $r['metabolite_name'],
+            'value'          => $r['expr_value'],
+        ];
+    }
+}
+// ─────────────────────────────────────────────────────────────
 
 // 輔助：顯示欄位值，null/空值顯示 -
 function displayVal(?string $val): string {
@@ -186,6 +232,18 @@ function displayVal(?string $val): string {
             color: #999;
             font-style: italic;
         }
+
+        .section-content a {
+            color: #2980b9;
+            text-decoration: none;
+            line-height: 2;
+            display: block;
+        }
+
+        .section-content a:hover {
+            color: #1a5276;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -208,7 +266,7 @@ function displayVal(?string $val): string {
 
         <!-- 頁面標題 -->
         <div class="page-title">
-            <h1>Patient: <?= htmlspecialchars($patientId) ?></h1>
+            <h1>Patient ID: <?= htmlspecialchars($patientId) ?></h1>
         </div>
 
         <!-- 返回按鈕 -->
@@ -229,6 +287,24 @@ function displayVal(?string $val): string {
             </div>
         </div>
         <?php endforeach; ?>
+
+        <!-- Metabolites Section -->
+        <div class="section-block">
+            <div class="section-header">Metabolites</div>
+            <div class="section-content">
+                <?php if (empty($metabolites)): ?>
+                    <span class="no-data">No metabolite expression data available for this patient.</span>
+                <?php else: ?>
+                    <?php foreach ($metabolites as $m): ?>
+                        <div>
+                            <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/">
+                                <?= htmlspecialchars($m['metabolite_name']) ?>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
 
     <?php endif; ?>
 

@@ -149,7 +149,10 @@ function pageUrl(int $p): string {
             <div class="selection-section">
                 <div class="section-title">2. Select Additional Data Fields to Display</div>
                 <div class="section-subtitle">Metabolite ID and Name are always displayed. Choose additional information:</div>
-                <div class="chips-container">
+                <div style="margin-bottom:0.75rem;">
+                    <button type="button" id="allInfoBtn" class="chip" style="font-weight:600;">All Information</button>
+                </div>
+                <div class="chips-container" id="fieldsContainer">
                     <?php foreach ($allFields as $val => $label): ?>
                         <label class="chip <?= in_array($val, (array)($_GET['fields'] ?? [])) ? 'selected' : '' ?>">
                             <input type="checkbox" name="fields[]" value="<?= $val ?>"
@@ -206,7 +209,7 @@ function pageUrl(int $p): string {
                     <?php foreach ($results as $row): ?>
                     <tr>
                         <td>
-                            <a href="metabolite.php?id=<?= urlencode($row['DMTDB_ID']) ?>">
+                            <a href="metabolite/<?= strtolower(htmlspecialchars($row['DMTDB_ID'])) ?>/">
                             <?= htmlspecialchars($row['DMTDB_ID']) ?>
                             </a>
 			</td>
@@ -267,16 +270,43 @@ function pageUrl(int $p): string {
 document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', function () {
         const cb = this.querySelector('input[type=checkbox]');
+        if (!cb) return;
         cb.checked = !cb.checked;
         this.classList.toggle('selected', cb.checked);
+        updateAllInfoBtn();
         validateForm();
     });
 });
+
+// All Information 按鈕：全選 / 取消全選 fields
+const allInfoBtn = document.getElementById('allInfoBtn');
+if (allInfoBtn) {
+    allInfoBtn.addEventListener('click', function () {
+        const fieldChips = document.querySelectorAll('#fieldsContainer .chip');
+        const allChecked = [...fieldChips].every(c => c.querySelector('input[type=checkbox]').checked);
+        fieldChips.forEach(chip => {
+            const cb = chip.querySelector('input[type=checkbox]');
+            cb.checked = !allChecked;
+            chip.classList.toggle('selected', !allChecked);
+        });
+        this.classList.toggle('selected', !allChecked);
+        validateForm();
+    });
+}
+
+function updateAllInfoBtn() {
+    if (!allInfoBtn) return;
+    const fieldChips = document.querySelectorAll('#fieldsContainer .chip');
+    const allChecked = [...fieldChips].every(c => c.querySelector('input[type=checkbox]').checked);
+    allInfoBtn.classList.toggle('selected', allChecked);
+}
 
 function validateForm() {
     const anyDisease = document.querySelectorAll('input[name="diseases[]"]:checked').length > 0;
     document.getElementById('submitBtn').disabled = !anyDisease;
 }
+
+updateAllInfoBtn();
 validateForm();
 </script>
 </body>

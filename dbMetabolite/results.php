@@ -219,12 +219,12 @@ function pageUrl(int $p): string {
                     <tbody>
                     <?php foreach ($results as $row): ?>
                         <tr>
-                            <td><?= htmlspecialchars($row['DMTDB_ID']) ?></td>
                             <td>
-                                <a href="metabolite.php?id=<?= urlencode($row['DMTDB_ID']) ?>">
-                                    <?= htmlspecialchars($row['metabolite_name']) ?>
+                                <a href="metabolite/<?= urlencode(strtolower($row['DMTDB_ID'])) ?>/">
+                                    <?= htmlspecialchars($row['DMTDB_ID']) ?>
                                 </a>
                             </td>
+                            <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
                             <?php if ($group === 'id'): ?>
                                 <td>
                                     <?php if (!empty($row['searched_id'])): ?>

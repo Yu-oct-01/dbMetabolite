@@ -17,7 +17,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <div class="dropdown-menu">
                     <a href="/metabolites.php">Metabolites</a>
                     <a href="/clinicaldata.php">Clinical Data</a>
-                    <a href="#">file3</a>
                 </div>
             </li>
             <li class="nav-item">
