@@ -9,6 +9,7 @@ $allFields = [
     'hmdb_id'          => 'HMDB ID',
     'chebi_id'         => 'ChEBI ID',
     'pubchem_id'       => 'PubChem ID',
+    'kegg_id'          => 'KEGG ID',
     'avg_expression'   => 'Average Expression',
     'isomers'          => 'Isomers (RT/RI)',
     'immune_cells'     => 'Immune Cell Related',
@@ -21,7 +22,7 @@ $allFields = [
 ];
 
 $diseaseOptions = [
-    'glioma' => 'Glioma',
+    'glioma(gbm)' => 'Glioma(GBM)',
     'others' => 'Others',
 ];
 
@@ -32,6 +33,7 @@ $existingCols = [
     'hmdb_id'    => 'HMDB_ID',
     'chebi_id'   => 'CHEBI_ID',
     'pubchem_id' => 'Pubchem_ID',
+    'kegg_id'    => 'KEGG_ID',
 ];
 
 // link 欄位對應
@@ -39,6 +41,7 @@ $linkCols = [
     'hmdb_id'    => 'HMDB_link',
     'chebi_id'   => 'CHEBI_link',
     'pubchem_id' => 'Pubchem_link',
+    'kegg_id'    => 'KEGG_link',
 ];
 
 // 初始化
@@ -237,6 +240,11 @@ function pageUrl(int $p): string {
                                         : htmlspecialchars($val);
                                 } elseif ($f === 'pubchem_id') {
                                     $link = $row['Pubchem_link'] ?? '';
+                                    echo $link
+                                        ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
+                                        : htmlspecialchars($val);
+                                }elseif ($f === 'kegg_id') {
+                                    $link = $row['KEGG_link'] ?? '';
                                     echo $link
                                         ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
                                         : htmlspecialchars($val);

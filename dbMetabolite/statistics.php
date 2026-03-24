@@ -25,7 +25,7 @@ $clinicalTotal    = $clinical552Count + $clinical546Count;
 
 <div class="container">
     <h1 style="color:#2c3e50; margin-bottom:30px;">Statistic Data</h1>
-    <h3 style="color:#2c3e50; margin-bottom:30px;">Glioma:</h3>
+    <h3 style="color:#2c3e50; margin-bottom:30px;">Glioma(GBM):</h3>
 
     <!-- 數據表格 -->
     <div class="table-section">

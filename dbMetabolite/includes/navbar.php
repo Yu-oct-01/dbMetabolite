@@ -30,6 +30,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <li class="nav-item">
                 <a href="/download.php" class="nav-link <?= $currentPage === 'download.php' ? 'active' : '' ?>">Download</a>
             </li>
+            <li class="nav-item">
+                <a href="/tutorial.php" class="nav-link <?= $currentPage === 'tutorial.php' ? 'active' : '' ?>">Tutorial</a>
+            </li>
         </ul>
     </div>
 </nav>

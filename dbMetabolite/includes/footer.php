@@ -4,5 +4,5 @@
 // =============================================
 ?>
 <footer class="footer">
-    <p>© <?= date('Y') ?> Metabolite Database</p>
+    <p>© <?= date('Y') ?> Disease Metabolite Database</p>
 </footer>

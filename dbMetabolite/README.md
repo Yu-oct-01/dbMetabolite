@@ -19,6 +19,7 @@ dbMetabolite/
 ├── results.php (搜尋結果的獨立頁面)
 ├── statistics.php
 ├── search.php
+├── tutorial.php
 ├── includes/          
 │   ├── footer.php (網站底部的頁尾)
 │   ├── navbar.php (網站頂部的導航欄)
