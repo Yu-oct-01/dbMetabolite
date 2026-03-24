@@ -2,7 +2,7 @@
 // =============================================
 // search.php  —  搜尋頁
 // =============================================
-require_once 'config.php';
+require_once(__DIR__ . '/../config.php');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -13,7 +13,7 @@ ini_set('display_errors', 1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Search</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
@@ -22,28 +22,24 @@ ini_set('display_errors', 1);
 <div class="container">
     <h1 style="color:#2c3e50; margin-bottom:30px;">Search Metabolites</h1>
 
-    <!-- ===== 搜尋區 1：基本資訊 ===== -->
-    <form method="GET" action="results.php" class="search-section">
-        <h3>Search by Basic Information</h3>
-        <label style="display:block; margin-bottom:10px; font-weight:600;">Select a Category</label>
-        <div style="display:flex; gap:20px; margin-bottom:15px;">
-            <label><input type="radio" name="search_field" value="metabolite-name"> Metabolite Name</label>
-            <label><input type="radio" name="search_field" value="pathway"> Pathway</label>
-        </div>
+    <!-- ===== 搜尋區 1：名字 ===== -->
+    <form method="GET" action="results_name.php" class="search-section">
+        <h3>Search by Name & Synonyms</h3>
+        <input type="hidden" name="search_field" value="synonym">
         <label style="display:block; margin-bottom:8px; font-weight:600;">Input the Keyword</label>
         <input type="text" name="keyword"
-               placeholder="(eg. Serotonin / Tryptophan metabolism)"
+               placeholder="(eg. 5-hydroxytryptamine / 5-HT)"
                style="width:100%; padding:12px 15px; border:2px solid #ddd; border-radius:4px; font-size:16px; margin-bottom:15px;">
         <div style="display:flex; gap:10px;">
             <button type="submit" class="btn btn-primary">Search</button>
             <button type="button" class="btn btn-danger" onclick="location.href='search.php'">Clear</button>
             <button type="button" class="btn btn-success"
-                    onclick="this.form.querySelector('[name=keyword]').value='Serotonin'">Example</button>
+                    onclick="this.form.querySelector('[name=keyword]').value='5-hydroxytryptamine'">Example</button>
         </div>
     </form>
 
     <!-- ===== 搜尋區 2：資料庫 ID ===== -->
-    <form method="GET" action="results.php" class="search-section">
+    <form method="GET" action="results_id.php" class="search-section">
         <h3>Search by Database ID</h3>
         <label style="display:block; margin-bottom:10px; font-weight:600;">Select a Category</label>
         <div style="display:flex; gap:20px; margin-bottom:15px; flex-wrap:wrap;">
@@ -63,29 +59,36 @@ ini_set('display_errors', 1);
         </div>
     </form>
 
-    <!-- ===== 搜尋區 3：同義詞 ===== -->
-    <form method="GET" action="results.php" class="search-section">
-        <h3>Search by Synonyms</h3>
+    <!-- ===== 搜尋區 3：資訊搜尋 ===== -->
+    <div class="search-section">
+        <h3>Search by Information</h3>
         <label style="display:block; margin-bottom:10px; font-weight:600;">Select a Category</label>
         <div style="display:flex; gap:20px; margin-bottom:15px;">
-            <label><input type="radio" name="search_field" value="synonym"> KEGG</label>
-            <label><input type="radio" name="search_field" value="hmdb-synonym"> HMDB</label>
+            <label><input type="radio" name="info_field" value="pathway" checked> Pathway</label>
+            <label><input type="radio" name="info_field" value="tme"> Tumor Microenvironment</label>
         </div>
-        <label style="display:block; margin-bottom:8px; font-weight:600;">Input the Keyword</label>
-        <input type="text" name="keyword"
-               placeholder="(eg. 5-hydroxytryptamine / 5-HT)"
-               style="width:100%; padding:12px 15px; border:2px solid #ddd; border-radius:4px; font-size:16px; margin-bottom:15px;">
         <div style="display:flex; gap:10px;">
-            <button type="submit" class="btn btn-primary">Search</button>
-            <button type="button" class="btn btn-danger" onclick="location.href='search.php'">Clear</button>
-            <button type="button" class="btn btn-success"
-                    onclick="this.form.querySelector('[name=keyword]').value='5-hydroxytryptamine'">Example</button>
+            <button type="button" class="btn btn-primary" onclick="goToInfoSearch()">Search</button>
         </div>
-    </form>
+    </div>
 
 </div>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>
 <script src="js/main.js"></script>
+<script>
+function goToInfoSearch() {
+    const selected = document.querySelector('input[name="info_field"]:checked');
+    if (!selected) {
+        alert('Please select a category.');
+        return;
+    }
+    if (selected.value === 'pathway') {
+        location.href = 'search_pathway.php';
+    } else if (selected.value === 'tme') {
+        location.href = 'search_tme.php';
+    }
+}
+</script>
 </body>
 </html>

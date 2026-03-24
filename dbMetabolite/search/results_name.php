@@ -1,8 +1,8 @@
 <?php
 // =============================================
-// results.php  —  搜尋結果頁
+// results_name.php  —  name 搜尋結果頁
 // =============================================
-require_once 'config.php';
+require_once(__DIR__ . '/../config.php');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -26,27 +26,6 @@ $allowedFields = [
         'column' => 'pathway',
         'label'  => 'Pathway',
         'group'  => 'basic',
-    ],
-    'hmdb' => [
-        'table'       => 'metabolites_id',
-        'column'      => 'HMDB_ID',
-        'link_column' => 'HMDB_link',
-        'label'       => 'HMDB ID',
-        'group'       => 'id',
-    ],
-    'chebi' => [
-        'table'       => 'metabolites_id',
-        'column'      => 'CHEBI_ID',
-        'link_column' => 'CHEBI_link',
-        'label'       => 'ChEBI ID',
-        'group'       => 'id',
-    ],
-    'pubchem' => [
-        'table'       => 'metabolites_id',
-        'column'      => 'Pubchem_ID',
-        'link_column' => 'Pubchem_link',
-        'label'       => 'PubChem ID',
-        'group'       => 'id',
     ],
     'synonym' => [
         'table'  => 'metabolites',
@@ -80,29 +59,7 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
         $group       = $fieldConfig['group'];
         $db          = getDB();
 
-        if ($group === 'id') {
-            $linkCol = $fieldConfig['link_column'];
-
-            $stmtCount = $db->prepare("SELECT COUNT(*) FROM `$tbl` WHERE `$col` LIKE :kw");
-            $stmtCount->execute([':kw' => "%$keyword%"]);
-            $total = (int)$stmtCount->fetchColumn();
-
-            $stmt = $db->prepare(
-                "SELECT DMTDB_ID, metabolite_name,
-                        `$col`     AS searched_id,
-                        `$linkCol` AS searched_link
-                 FROM `$tbl`
-                 WHERE `$col` LIKE :kw
-                 ORDER BY DMTDB_ID
-                 LIMIT :limit OFFSET :offset"
-            );
-            $stmt->bindValue(':kw',     "%$keyword%");
-            $stmt->bindValue(':limit',  PER_PAGE, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
-            $stmt->execute();
-            $results = $stmt->fetchAll();
-
-        } elseif ($group === 'hmdb-synonym') {
+        if ($group === 'hmdb-synonym') {
             // 查 hmdb_synonyms，再 JOIN metabolites_id 取 DMTDB_ID
             $stmtCount = $db->prepare(
                 "SELECT COUNT(DISTINCT hs.HMDB_ID)
@@ -131,6 +88,7 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
             $results = $stmt->fetchAll();
 
         } else {
+            // basic / synonym
             $stmtCount = $db->prepare("SELECT COUNT(*) FROM `$tbl` WHERE `$col` LIKE :kw");
             $stmtCount->execute([':kw' => "%$keyword%"]);
             $total = (int)$stmtCount->fetchColumn();
@@ -153,7 +111,6 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
         $searchType = $fieldConfig['label'];
     }
 } else {
-    // 沒有帶參數直接進來，跳回搜尋頁
     header('Location: search.php');
     exit;
 }
@@ -170,7 +127,7 @@ function pageUrl(int $p): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results — Metabolite Database</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
@@ -204,9 +161,7 @@ function pageUrl(int $p): string {
                         <tr>
                             <th>Metabolite ID</th>
                             <th>Metabolite Name</th>
-                            <?php if ($group === 'id'): ?>
-                                <th><?= htmlspecialchars($searchType) ?></th>
-                            <?php elseif ($group === 'hmdb-synonym'): ?>
+                            <?php if ($group === 'hmdb-synonym'): ?>
                                 <th>HMDB ID</th>
                                 <th>Matched Synonyms</th>
                             <?php else: ?>
@@ -225,15 +180,7 @@ function pageUrl(int $p): string {
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
-                            <?php if ($group === 'id'): ?>
-                                <td>
-                                    <?php if (!empty($row['searched_id'])): ?>
-                                        <a href="<?= htmlspecialchars($row['searched_link']) ?>" target="_blank">
-                                            <?= htmlspecialchars($row['searched_id']) ?>
-                                        </a>
-                                    <?php else: ?>-<?php endif; ?>
-                                </td>
-                            <?php elseif ($group === 'hmdb-synonym'): ?>
+                            <?php if ($group === 'hmdb-synonym'): ?>
                                 <td>
                                     <?php if (!empty($row['HMDB_ID'])): ?>
                                         <a href="https://hmdb.ca/metabolites/<?= urlencode($row['HMDB_ID']) ?>" target="_blank">

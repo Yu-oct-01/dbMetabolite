@@ -26,14 +26,14 @@ $allFields = [
 ];
 
 $diseaseOptions = [
-    'glioma' => 'Glioma',
+    'glioma(gbm)' => 'Glioma(GBM)',
     'others' => 'Others',
 ];
 
 // 各 disease 對應的資料來源（資料表清單）
 // 尚無資料的 disease 留空陣列，之後補充資料表名稱即可
 $diseaseSources = [
-    'glioma' => [
+    'glioma(gbm)' => [
         'tables' => ['cptac3_pdc000546_clinicaldata', 'cptac3_pdc000552_clinicaldata'],
     ],
     'others' => [

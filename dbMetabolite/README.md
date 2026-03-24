@@ -1,4 +1,4 @@
-cconfig.php 檔的 pass 要改成自己的密碼
+config.php 檔的 pass 要改成自己的密碼
 
 dbMetabolite/
 ├──metabolite/
@@ -6,12 +6,21 @@ dbMetabolite/
 │         ├──index.php
 │   ├── dmtdb000002/
 │         ├──index.php
+│   ˙˙˙˙˙
 ├──clinicaldata/
 │   ├── C1230738/
 │         ├──index.php
 │   ├── C1245129/
 │         ├──index.php
+│   ˙˙˙˙˙
 ├── README.md
+├── search/          
+│   ├── search.php
+│   ├── search_pathway.php
+│   ├── search_tme.php
+│   ├── results_name.php
+│   ├── results_id.php
+│   └── results_pathway.php
 ├── clinicaldata.php
 ├── config.php (資料庫連線設定)
 ├── index.php

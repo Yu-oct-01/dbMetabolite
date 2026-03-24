@@ -10,7 +10,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <a href="/statistics.php" class="nav-link <?= $currentPage === 'statistics.php' ? 'active' : '' ?>">Statistic</a>
             </li>
             <li class="nav-item">
-                <a href="/search.php" class="nav-link <?= $currentPage === 'search.php' ? 'active' : '' ?>">Search</a>
+                <a href="/search/search.php" class="nav-link <?= $currentPage === 'search.php' ? 'active' : '' ?>">Search</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= in_array($currentPage, ['metabolites.php']) ? 'active' : '' ?>">Browse ▼</a>
