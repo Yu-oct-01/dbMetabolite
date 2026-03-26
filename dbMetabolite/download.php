@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// tutorial.php  —  教學頁
+// download.php  —  下載頁
 // =============================================
 require_once 'config.php';
 ?>
@@ -10,7 +10,7 @@ require_once 'config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metabolite Database - Tutorial</title>
+    <title>Metabolite Database - Download</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>

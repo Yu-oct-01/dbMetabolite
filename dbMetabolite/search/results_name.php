@@ -15,23 +15,11 @@ $errorMsg   = '';
 $group      = '';
 
 $allowedFields = [
-    'metabolite-name' => [
-        'table'  => 'metabolites',
-        'column' => 'metabolite_name',
-        'label'  => 'Metabolite Name',
-        'group'  => 'basic',
-    ],
-    'pathway' => [
-        'table'  => 'metabolites',
-        'column' => 'pathway',
-        'label'  => 'Pathway',
-        'group'  => 'basic',
-    ],
     'synonym' => [
-        'table'  => 'metabolites',
-        'column' => 'synonym_name',
-        'label'  => 'Synonym (KEGG)',
-        'group'  => 'synonym',
+        'table'  => 'hmdb_synonyms',
+        'column' => 'synonyms',
+        'label'  => 'Name & Synonyms',
+        'group'  => 'hmdb-custom',
     ],
     'hmdb-synonym' => [
         'table'  => 'hmdb_synonyms',
@@ -59,7 +47,58 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
         $group       = $fieldConfig['group'];
         $db          = getDB();
 
-        if ($group === 'hmdb-synonym') {
+        if ($group === 'hmdb-custom') {
+            /*
+             * 搜尋邏輯：
+             * 1. 若使用者輸入匹配 metabolite_name（正式名稱）：
+             *    → 顯示 DMTDB_ID、Metabolite Name、
+             *      以及該代謝物「所有的同義詞」（因為名稱本身就包含在同義詞清單的概念中）
+             *
+             * 2. 若使用者輸入匹配 synonyms（但不匹配 metabolite_name）：
+             *    → 僅顯示 DMTDB_ID、Metabolite Name、使用者輸入所匹配的同義詞
+             */
+
+            // --- COUNT ---
+            $stmtCount = $db->prepare(
+                "SELECT COUNT(DISTINCT mi.DMTDB_ID)
+                 FROM metabolites_id mi
+                 JOIN hmdb_synonyms hs ON mi.HMDB_ID = hs.HMDB_ID
+                 WHERE hs.metabolite_name LIKE :kw OR hs.synonyms LIKE :kw"
+            );
+            $stmtCount->execute([':kw' => "%$keyword%"]);
+            $total = (int)$stmtCount->fetchColumn();
+
+            // --- DATA ---
+            // name_match   = 1 → keyword 命中 metabolite_name
+            // synonym_match = 1 → keyword 命中 synonyms
+            // all_synonyms  → 該代謝物的所有同義詞（供 name_match 時顯示）
+            // matched_synonyms → 僅匹配 keyword 的同義詞（供 synonym_match 時顯示）
+            $stmt = $db->prepare(
+                "SELECT
+                    mi.DMTDB_ID,
+                    mi.metabolite_name,
+                    mi.HMDB_ID,
+                    MAX(hs.metabolite_name)                                                    AS hmdb_name,
+                    MAX(CASE WHEN hs.metabolite_name LIKE :kw THEN 1 ELSE 0 END)              AS name_match,
+                    GROUP_CONCAT(DISTINCT hs.synonyms ORDER BY hs.synonyms SEPARATOR ' | ')   AS all_synonyms,
+                    GROUP_CONCAT(DISTINCT CASE
+                        WHEN hs.synonyms LIKE :kw THEN hs.synonyms
+                        ELSE NULL
+                    END ORDER BY hs.synonyms SEPARATOR ' | ')                                 AS matched_synonyms
+                 FROM metabolites_id mi
+                 JOIN hmdb_synonyms hs ON mi.HMDB_ID = hs.HMDB_ID
+                 WHERE hs.metabolite_name LIKE :kw OR hs.synonyms LIKE :kw
+                 GROUP BY mi.DMTDB_ID, mi.metabolite_name, mi.HMDB_ID
+                 ORDER BY mi.DMTDB_ID
+                 LIMIT :limit OFFSET :offset"
+            );
+            $stmt->bindValue(':kw',     "%$keyword%");
+            $stmt->bindValue(':limit',  PER_PAGE, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
+            $stmt->execute();
+            $results = $stmt->fetchAll();
+
+        } elseif ($group === 'hmdb-synonym') {
             // 查 hmdb_synonyms，再 JOIN metabolites_id 取 DMTDB_ID
             $stmtCount = $db->prepare(
                 "SELECT COUNT(DISTINCT hs.HMDB_ID)
@@ -87,24 +126,6 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
             $stmt->execute();
             $results = $stmt->fetchAll();
 
-        } else {
-            // basic / synonym
-            $stmtCount = $db->prepare("SELECT COUNT(*) FROM `$tbl` WHERE `$col` LIKE :kw");
-            $stmtCount->execute([':kw' => "%$keyword%"]);
-            $total = (int)$stmtCount->fetchColumn();
-
-            $stmt = $db->prepare(
-                "SELECT DMTDB_ID, metabolite_name, HMDB_ID, CHEBI_ID, Pubchem_ID
-                 FROM `$tbl`
-                 WHERE `$col` LIKE :kw
-                 ORDER BY DMTDB_ID
-                 LIMIT :limit OFFSET :offset"
-            );
-            $stmt->bindValue(':kw',     "%$keyword%");
-            $stmt->bindValue(':limit',  PER_PAGE, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
-            $stmt->execute();
-            $results = $stmt->fetchAll();
         }
 
         $totalPages = (int)ceil($total / PER_PAGE);
@@ -165,9 +186,7 @@ function pageUrl(int $p): string {
                                 <th>HMDB ID</th>
                                 <th>Matched Synonyms</th>
                             <?php else: ?>
-                                <th>HMDB ID</th>
-                                <th>ChEBI ID</th>
-                                <th>PubChem ID</th>
+                                <th>Synonyms</th>
                             <?php endif; ?>
                         </tr>
                     </thead>
@@ -180,6 +199,7 @@ function pageUrl(int $p): string {
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
+
                             <?php if ($group === 'hmdb-synonym'): ?>
                                 <td>
                                     <?php if (!empty($row['HMDB_ID'])): ?>
@@ -189,27 +209,18 @@ function pageUrl(int $p): string {
                                     <?php else: ?>-<?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($row['matched_synonyms'] ?? '-') ?></td>
+
                             <?php else: ?>
                                 <td>
-                                    <?php if (!empty($row['HMDB_ID'])): ?>
-                                        <a href="https://hmdb.ca/metabolites/<?= urlencode($row['HMDB_ID']) ?>" target="_blank">
-                                            <?= htmlspecialchars($row['HMDB_ID']) ?>
-                                        </a>
-                                    <?php else: ?>-<?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if (!empty($row['CHEBI_ID'])): ?>
-                                        <a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=<?= urlencode($row['CHEBI_ID']) ?>" target="_blank">
-                                            <?= htmlspecialchars($row['CHEBI_ID']) ?>
-                                        </a>
-                                    <?php else: ?>-<?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if (!empty($row['Pubchem_ID'])): ?>
-                                        <a href="https://pubchem.ncbi.nlm.nih.gov/compound/<?= urlencode(str_replace('PubChem CID ', '', $row['Pubchem_ID'])) ?>" target="_blank">
-                                            <?= htmlspecialchars($row['Pubchem_ID']) ?>
-                                        </a>
-                                    <?php else: ?>-<?php endif; ?>
+                                <?php
+                                if (!empty($row['name_match']) && $row['name_match'] == 1) {
+                                    echo htmlspecialchars($row['all_synonyms'] ?? '-');
+                                } elseif (!empty($row['matched_synonyms'])) {
+                                    echo htmlspecialchars($row['matched_synonyms']);
+                                } else {
+                                    echo '-';
+                                }
+                                ?>
                                 </td>
                             <?php endif; ?>
                         </tr>

@@ -1,0 +1,93 @@
+/* =============================================
+   pathway.css  —  Pathway 搜尋 / 結果頁樣式
+   適用：search_pathway.php, results_pathway.php
+   ============================================= */
+
+/* ---- 結果表格 ---- */
+.result-wrapper {
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+}
+
+.result-table th {
+    background: #2c3e50;
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.result-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+
+.result-table tbody tr:hover td {
+    background: #f0f4f8;
+}
+
+/* ---- badges ---- */
+.badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-compound {
+    background: #d5f5e3;
+    color: #1e8449;
+}
+
+.badge-gene {
+    background: #d6eaf8;
+    color: #1a5276;
+}
+
+.badge-enzyme {
+    background: #fdebd0;
+    color: #784212;
+}
+
+/* ---- misc ---- */
+.meta-bar {
+    color: #555;
+    margin-bottom: 18px;
+    font-size: .92rem;
+}
+
+.meta-bar strong {
+    color: #2c3e50;
+}
+
+.no-result {
+    color: #888;
+    padding: 20px 0;
+}
+
+.count-badge {
+    background: #2c3e50;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: .82rem;
+    margin-left: 8px;
+}
+
+a.kegg-link {
+    color: #2980b9;
+    text-decoration: none;
+}
+
+a.kegg-link:hover {
+    text-decoration: underline;
+}

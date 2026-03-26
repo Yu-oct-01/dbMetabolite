@@ -1,0 +1,34 @@
+# HERD Project Requirements
+
+## PHP Requirements
+- PHP >= 8.0 (Required for `match` expression support)
+- Extensions:
+  - pdo
+  - pdo_mysql
+  - mbstring (Likely needed for UTF-8 handling even if explicit function calls weren't found in initial grep)
+  - json (Standard in modern PHP, but listed for completeness)
+
+## Database
+- MySQL / MariaDB
+- Database Name: metabolites
+- Import SQL files from `metabolitesSQL/` directory
+
+## Web Server
+- Apache / Nginx
+- Document Root: dbMetabolite/
+- URL Rewriting enabled (recommended for cleaner URLs, though code uses standard .php links)
+
+## Frontend Dependencies (Included in repository)
+- CSS: 
+  - dbMetabolite/css/style.css
+  - dbMetabolite/css/browse.css
+- JS: 
+  - dbMetabolite/js/main.js
+- No external CDN dependencies detected (jQuery, Bootstrap, etc. not found in scanned files)
+
+## Configuration
+- Update `dbMetabolite/config.php` with local database credentials:
+  - Host
+  - User
+  - Password
+  - Database Name

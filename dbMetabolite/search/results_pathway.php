@@ -1,6 +1,11 @@
 <?php
 // =============================================
-// results.php  —  Pathway 搜尋結果頁
+// results_pathway.php  —  Pathway 搜尋結果頁
+// =============================================
+// 表格欄位順序：pathway_id | metabolite_type | kegg_id | metabolite_name | pathway_name
+// 資料來源：
+//   kegg_hsa_metabolism_pathways  (pathway_id, metabolite_type, kegg_id, metabolite_name)
+//   kegg_hsa_pathwayname          (pathway_id, pathway_name)
 // =============================================
 require_once(__DIR__ . '/../config.php');
 
@@ -8,109 +13,60 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ---------- 取得並清理參數 ----------
-$search_field  = $_GET['search_field'] ?? '';   // pathway_id | pathway_name | compound | gene | enzyme
-$keyword       = trim($_GET['keyword'] ?? '');
+$step1_field = $_GET['step1_field'] ?? 'pathway_id';   // pathway_id | pathway_name
+$step2_type  = $_GET['step2_type']  ?? 'Compound';     // Compound | Gene | Enzyme
+$keyword     = trim($_GET['keyword'] ?? '');
 
-// search_field 可能被 radio 覆蓋；第一組 radio (step 1) 決定搜尋欄位，第二組 radio (step 2) 決定顯示類型
-// 實作方式：把 step1 / step2 分成兩個獨立的 name，避免互蓋
-// 若舊版表單只有一個 name="search_field"，這裡做相容處理：
-$step1_field   = $_GET['step1_field']  ?? $search_field;   // pathway_id | pathway_name
-$step2_type    = $_GET['step2_type']   ?? '';               // compound | gene | enzyme
-
-// 若表單尚未拆分，自動判斷
-if (in_array($search_field, ['compound','gene','enzyme'])) {
-    $step2_type  = $search_field;
-    $step1_field = 'pathway_id';   // 預設用 ID 搜
+// 安全白名單
+if (!in_array($step1_field, ['pathway_id', 'pathway_name'])) {
+    $step1_field = 'pathway_id';
 }
-if (in_array($search_field, ['pathway_id','pathway_name'])) {
-    $step1_field = $search_field;
+if (!in_array($step2_type, ['Compound', 'Gene', 'Enzyme'])) {
+    $step2_type = 'Compound';
 }
-
-$step2_type_map = [
-    'compound' => 'Compound',
-    'gene'     => 'Gene',
-    'enzyme'   => 'Enzyme',
-];
-$type_filter = $step2_type_map[$step2_type] ?? null;   // NULL = 顯示全部類型
 
 // ---------- 資料庫連線 ----------
-try {
-    $pdo = new PDO(
-        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-        DB_USER, DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $e) {
-    die('Database connection failed: ' . htmlspecialchars($e->getMessage()));
-}
+$pdo = getDB();
 
-// ---------- Step 1：先找出符合的 pathway_id 清單 ----------
-$matched_pathways = [];   // [ ['pathway_id'=>..., 'pathway_name'=>...], ... ]
+// ---------- 查詢 ----------
+// 單一 JOIN 查詢：直接取得所有需要欄位
+// 欄位：m.pathway_id, m.metabolite_type, m.kegg_id, m.metabolite_name, p.pathway_name
+$rows         = [];
+$total_count  = 0;
 
 if ($keyword !== '') {
-    if ($step1_field === 'pathway_id') {
-        $sql = "SELECT p.pathway_id, p.pathway_name
-                FROM kegg_hsa_pathwayname p
-                WHERE p.pathway_id LIKE :kw
-                ORDER BY p.pathway_id
-                LIMIT 200";
-    } else {
-        // pathway_name
-        $sql = "SELECT p.pathway_id, p.pathway_name
-                FROM kegg_hsa_pathwayname p
-                WHERE p.pathway_name LIKE :kw
-                ORDER BY p.pathway_id
-                LIMIT 200";
-    }
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':kw' => '%' . $keyword . '%']);
-    $matched_pathways = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+    // Step 1：依搜尋欄位決定 WHERE 條件
+    $where_field = ($step1_field === 'pathway_id')
+        ? 'm.pathway_id'
+        : 'p.pathway_name';
 
-// ---------- Step 2：依 pathway_id 清單撈 detail ----------
-$results = [];   // [ pathway_id => ['pathway_name'=>..., 'rows'=>[...]] ]
-
-if (!empty($matched_pathways)) {
-    $ids       = array_column($matched_pathways, 'pathway_id');
-    $nameMap   = array_column($matched_pathways, 'pathway_name', 'pathway_id');
-
-    // 動態佔位符
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-    $type_sql = $type_filter ? " AND d.type = ? " : "";
-
-    $sql = "SELECT d.pathway_id, d.type, d.entry_id, d.name
-            FROM kegg_hsa_pathway_detail d
-            WHERE d.pathway_id IN ($placeholders)
-            $type_sql
-            ORDER BY d.pathway_id, d.type, d.entry_id";
+    $sql = "
+        SELECT
+            m.pathway_id,
+            m.metabolite_type,
+            m.kegg_id,
+            m.metabolite_name,
+            p.pathway_name
+        FROM kegg_hsa_metabolism_pathways m
+        LEFT JOIN kegg_hsa_pathwayname p ON p.pathway_id = m.pathway_id
+        WHERE {$where_field} LIKE :kw
+          AND m.metabolite_type = :type
+        ORDER BY m.pathway_id, m.kegg_id
+        LIMIT 2000
+    ";
 
     $stmt = $pdo->prepare($sql);
-    $params = $ids;
-    if ($type_filter) $params[] = $type_filter;
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 依 pathway_id 分組
-    foreach ($matched_pathways as $pw) {
-        $results[$pw['pathway_id']] = [
-            'pathway_name' => $pw['pathway_name'],
-            'rows'         => [],
-        ];
-    }
-    foreach ($rows as $row) {
-        $results[$row['pathway_id']]['rows'][] = $row;
-    }
+    $stmt->execute([
+        ':kw'   => '%' . $keyword . '%',
+        ':type' => $step2_type,
+    ]);
+    $rows        = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $total_count = count($rows);
 }
 
-// ---------- 超連結 prefix ----------
-function entry_url(string $type, string $entry_id): string {
-    return match($type) {
-        'Compound' => "https://www.kegg.jp/entry/" . urlencode($entry_id),
-        'Gene'     => "https://www.kegg.jp/entry/" . urlencode($entry_id),
-        'Enzyme'   => "https://www.kegg.jp/entry/" . urlencode($entry_id),
-        default    => "#",
-    };
+// ---------- 超連結：kegg_id → KEGG entry 頁 ----------
+function kegg_url(string $type, string $kegg_id): string {
+    return "https://www.kegg.jp/entry/" . urlencode($kegg_id);
 }
 ?>
 <!DOCTYPE html>
@@ -120,88 +76,91 @@ function entry_url(string $type, string $entry_id): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Pathway Results</title>
     <link rel="stylesheet" href="/css/style.css">
-    <style>
-        .result-block      { margin-bottom: 40px; }
-        .pathway-title     { background:#2c3e50; color:#fff; padding:10px 16px; border-radius:4px 4px 0 0; font-size:1rem; }
-        .pathway-title span{ color:#aed6f1; font-weight:normal; font-size:.9rem; margin-left:10px; }
-        .result-table      { width:100%; border-collapse:collapse; font-size:.9rem; }
-        .result-table th   { background:#34495e; color:#fff; padding:8px 12px; text-align:left; }
-        .result-table td   { padding:7px 12px; border-bottom:1px solid #eee; }
-        .result-table tr:hover td { background:#f0f4f8; }
-        .badge             { display:inline-block; padding:2px 8px; border-radius:10px; font-size:.8rem; font-weight:600; }
-        .badge-compound    { background:#d5f5e3; color:#1e8449; }
-        .badge-gene        { background:#d6eaf8; color:#1a5276; }
-        .badge-enzyme      { background:#fdebd0; color:#784212; }
-        .no-result         { color:#888; padding:20px 0; }
-    </style>
+    <link rel="stylesheet" href="/css/pathway.css">
 </head>
 <body>
 
 <?php include BASE_PATH . 'includes/navbar.php'; ?>
 
 <div class="container">
-    <h1 style="color:#2c3e50; margin-bottom:6px;">Search Results</h1>
-    <p style="color:#555; margin-bottom:24px;">
+    <h1 style="color:#2c3e50; margin-bottom:6px;">Pathway Search Results</h1>
+
+    <!-- 搜尋摘要列 -->
+    <div style="margin-bottom:16px;">
+        <a href="search_pathway.php" style="color:#2980b9; text-decoration:none; font-size:14px;">← Back to Pathway Search</a>
+    </div>
+
+    <p class="meta-bar">
         Keyword: <strong><?= htmlspecialchars($keyword) ?></strong>
-        &nbsp;|&nbsp; Field: <strong><?= htmlspecialchars($step1_field) ?></strong>
-        <?php if ($type_filter): ?>
-            &nbsp;|&nbsp; Show: <strong><?= htmlspecialchars($type_filter) ?></strong>
+        &nbsp;|&nbsp; Search by: <strong><?= $step1_field === 'pathway_id' ? 'KEGG ID' : 'Pathway Name' ?></strong>
+        &nbsp;|&nbsp; Data type: <strong><?= htmlspecialchars($step2_type) ?></strong>
+        <?php if ($keyword !== ''): ?>
+            <span class="count-badge"><?= $total_count ?> row<?= $total_count !== 1 ? 's' : '' ?></span>
         <?php endif; ?>
     </p>
 
-    <?php if (empty($keyword)): ?>
+    <?php if ($keyword === ''): ?>
         <p class="no-result">Please enter a keyword.</p>
 
-    <?php elseif (empty($matched_pathways)): ?>
-        <p class="no-result">No pathway found for "<strong><?= htmlspecialchars($keyword) ?></strong>".</p>
+    <?php elseif (empty($rows)): ?>
+        <p class="no-result">
+            No results found for "<strong><?= htmlspecialchars($keyword) ?></strong>"
+            (<?= $step2_type ?> in <?= $step1_field === 'pathway_id' ? 'KEGG ID' : 'Pathway Name' ?>).
+        </p>
 
     <?php else: ?>
-        <?php foreach ($results as $pid => $data): ?>
-        <div class="result-block">
-            <div class="pathway-title">
-                <?= htmlspecialchars($pid) ?>
-                <span><?= htmlspecialchars($data['pathway_name']) ?></span>
-                <a href="https://www.kegg.jp/pathway/<?= urlencode($pid) ?>"
-                   target="_blank"
-                   style="margin-left:12px; color:#aed6f1; font-size:.82rem;">[KEGG ↗]</a>
-            </div>
+    <div class="result-wrapper">
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>Pathway ID</th>
+                    <th>Type</th>
+                    <th>KEGG ID</th>
+                    <th>Metabolite Name</th>
+                    <th>Pathway Name</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($rows as $row):
+                $badge_class = 'badge-' . strtolower($row['metabolite_type']);
+                $entry_url   = kegg_url($row['metabolite_type'], $row['kegg_id']);
+                $pathway_url = 'https://www.kegg.jp/pathway/' . urlencode($row['pathway_id']);
+            ?>
+                <tr>
+                    <!-- Pathway ID → KEGG pathway 頁 -->
+                    <td>
+                        <a class="kegg-link" href="<?= htmlspecialchars($pathway_url) ?>" target="_blank">
+                            <?= htmlspecialchars($row['pathway_id']) ?>
+                        </a>
+                    </td>
 
-            <?php if (empty($data['rows'])): ?>
-                <p style="padding:12px 16px; color:#888;">No detail data for this pathway.</p>
-            <?php else: ?>
-            <table class="result-table">
-                <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th>ID</th>
-                        <th>Name</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($data['rows'] as $row):
-                    $badge_class = 'badge-' . strtolower($row['type']);
-                    $url = entry_url($row['type'], $row['entry_id']);
-                ?>
-                    <tr>
-                        <td><span class="badge <?= $badge_class ?>"><?= htmlspecialchars($row['type']) ?></span></td>
-                        <td>
-                            <a href="<?= htmlspecialchars($url) ?>" target="_blank">
-                                <?= htmlspecialchars($row['entry_id']) ?>
-                            </a>
-                        </td>
-                        <td><?= htmlspecialchars($row['name']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
+                    <!-- Type badge -->
+                    <td>
+                        <span class="badge <?= $badge_class ?>">
+                            <?= htmlspecialchars($row['metabolite_type']) ?>
+                        </span>
+                    </td>
+
+                    <!-- KEGG ID → KEGG entry 頁 -->
+                    <td>
+                        <a class="kegg-link" href="<?= htmlspecialchars($entry_url) ?>" target="_blank">
+                            <?= htmlspecialchars($row['kegg_id']) ?>
+                        </a>
+                    </td>
+
+                    <!-- Metabolite Name -->
+                    <td><?= htmlspecialchars($row['metabolite_name'] ?? '—') ?></td>
+
+                    <!-- Pathway Name -->
+                    <td><?= htmlspecialchars($row['pathway_name'] ?? '—') ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
     <?php endif; ?>
 
-    <div style="margin-top:20px;">
-        <a href="search_pathway.php" style="color:#2980b9; text-decoration:none; font-size:14px;">← Back to Pathway Search</a>
-    </div>
+
 </div>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>

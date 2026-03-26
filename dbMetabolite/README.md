@@ -14,20 +14,20 @@ dbMetabolite/
 │         ├──index.php
 │   ˙˙˙˙˙
 ├── README.md
+├── config.php (資料庫連線設定)
+├── index.php
+├── statistics.php
 ├── search/          
-│   ├── search.php
+│   ├── search.php 
 │   ├── search_pathway.php
 │   ├── search_tme.php
 │   ├── results_name.php
 │   ├── results_id.php
-│   └── results_pathway.php
+│   ├── results_pathway.php
+│   └── results_tme.php
 ├── clinicaldata.php
-├── config.php (資料庫連線設定)
-├── index.php
 ├── metabolites.php
-├── results.php (搜尋結果的獨立頁面)
-├── statistics.php
-├── search.php
+├── download.php
 ├── tutorial.php
 ├── includes/          
 │   ├── footer.php (網站底部的頁尾)
