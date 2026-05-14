@@ -47,6 +47,7 @@ $linkCols = [
 // 初始化
 $showResults   = false;
 $results       = [];
+$pathwayMap    = [];   // kegg_id => [ ['pathway_id'=>..., 'pathway_name'=>...], ... ]
 $total         = 0;
 $totalPages    = 1;
 $errorMsg      = '';
@@ -89,6 +90,13 @@ if (!empty($_GET['diseases'])) {
                 }
             }
         }
+
+        // 若有選 pathway 欄位，確保 KEGG_ID 也被 SELECT（用來做 pathway 查詢）
+        $needPathway = in_array('pathway', $selectedFields);
+        if ($needPathway && !in_array('KEGG_ID', $selectCols)) {
+            $selectCols[] = 'KEGG_ID';
+        }
+
         $selectCols = array_unique($selectCols);
         $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
         $limit      = PER_PAGE;
@@ -100,6 +108,38 @@ if (!empty($_GET['diseases'])) {
         } else {
             while ($row = $res->fetch(PDO::FETCH_ASSOC)) $results[] = $row;
         }
+
+        // ── Pathway 查詢 ──────────────────────────────────────────────
+        // 若使用者有勾選 pathway 欄位，批次撈出本頁所有代謝物的代謝途徑名稱
+        if ($needPathway && !empty($results)) {
+            // 收集本頁所有非空的 KEGG_ID
+            $keggIds = array_filter(
+                array_unique(array_column($results, 'KEGG_ID')),
+                fn($v) => $v !== null && $v !== ''
+            );
+
+            if (!empty($keggIds)) {
+                // 用 IN 批次查詢，避免 N+1
+                $placeholders = implode(',', array_fill(0, count($keggIds), '?'));
+                $stmt = $db->prepare(
+                    "SELECT p.kegg_id, p.pathway_id, n.pathway_name
+                     FROM kegg_hsa_metabolism_pathways p
+                     LEFT JOIN kegg_hsa_pathwayname n USING (pathway_id)
+                     WHERE p.kegg_id IN ($placeholders)
+                     ORDER BY p.kegg_id, p.pathway_id"
+                );
+                $stmt->execute(array_values($keggIds));
+
+                while ($pRow = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $kid = $pRow['kegg_id'];
+                    $pathwayMap[$kid][] = [
+                        'pathway_id'   => $pRow['pathway_id'],
+                        'pathway_name' => $pRow['pathway_name'] ?? $pRow['pathway_id'],
+                    ];
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────
     }
 }
 
@@ -118,6 +158,43 @@ function pageUrl(int $p): string {
     <title>Metabolite Database - Browse</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/browse.css">
+    <style>
+        /* ── Pathway 標籤樣式 ── */
+        .pathway-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 320px;
+        }
+        .pathway-tag {
+            display: inline-block;
+            background: #eaf3fb;
+            color: #1a5a8a;
+            border: 1px solid #b3d4ec;
+            border-radius: 12px;
+            padding: 2px 9px;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            line-height: 1.5;
+        }
+        .pathway-tag a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .pathway-tag a:hover {
+            text-decoration: underline;
+        }
+        .pathway-more {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #666;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 2px 9px;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
@@ -215,13 +292,44 @@ function pageUrl(int $p): string {
                             <a href="metabolite/<?= strtolower(htmlspecialchars($row['DMTDB_ID'])) ?>/">
                             <?= htmlspecialchars($row['DMTDB_ID']) ?>
                             </a>
-			</td>
-			<td><?= htmlspecialchars($row['metabolite_name']) ?></td>
+                        </td>
+                        <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
                         <?php foreach ($selectedFields as $f): ?>
                         <td>
                             <?php
-                            // 若欄位尚未建立，直接顯示空白
-                            if (!isset($existingCols[$f])) {
+                            // ── Pathway 欄位：從 pathwayMap 撈對應途徑 ──
+                            if ($f === 'pathway') {
+                                $keggId   = $row['KEGG_ID'] ?? '';
+                                $pathways = (!empty($keggId) && isset($pathwayMap[$keggId]))
+                                            ? $pathwayMap[$keggId]
+                                            : [];
+
+                                if (empty($pathways)) {
+                                    echo '-';
+                                } else {
+                                    // 最多先顯示 5 條，其餘收折（純 CSS toggle）
+                                    $limit   = 5;
+                                    $showAll = count($pathways) <= $limit;
+                                    $uid     = 'pw_' . htmlspecialchars($row['DMTDB_ID']);
+                                    echo '<div class="pathway-tags">';
+                                    foreach ($pathways as $i => $pw) {
+                                        $hidden = (!$showAll && $i >= $limit) ? ' style="display:none;"' : '';
+                                        $keggUrl = 'https://www.kegg.jp/pathway/' . htmlspecialchars($pw['pathway_id']);
+                                        echo '<span class="pathway-tag"' . $hidden . ' data-group="' . $uid . '">'
+                                           . '<a href="' . $keggUrl . '" target="_blank" title="' . htmlspecialchars($pw['pathway_id']) . '">'
+                                           . htmlspecialchars($pw['pathway_name'])
+                                           . '</a></span>';
+                                    }
+                                    if (!$showAll) {
+                                        $extra = count($pathways) - $limit;
+                                        echo '<span class="pathway-more" onclick="togglePathways(\'' . $uid . '\', this)">'
+                                           . '+' . $extra . ' more</span>';
+                                    }
+                                    echo '</div>';
+                                }
+
+                            // ── 其他欄位（原邏輯不變）──
+                            } elseif (!isset($existingCols[$f])) {
                                 echo '-';
                             } else {
                                 $colName = $existingCols[$f];
@@ -243,7 +351,7 @@ function pageUrl(int $p): string {
                                     echo $link
                                         ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
                                         : htmlspecialchars($val);
-                                }elseif ($f === 'kegg_id') {
+                                } elseif ($f === 'kegg_id') {
                                     $link = $row['KEGG_link'] ?? '';
                                     echo $link
                                         ? '<a href="' . htmlspecialchars($link) . '" target="_blank">' . htmlspecialchars($val) . '</a>'
@@ -275,6 +383,7 @@ function pageUrl(int $p): string {
 <?php include BASE_PATH . 'includes/footer.php'; ?>
 <link rel="stylesheet" href="css/browse.css">
 <script>
+/* ── Chip 互動 ── */
 document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', function () {
         const cb = this.querySelector('input[type=checkbox]');
@@ -316,6 +425,26 @@ function validateForm() {
 
 updateAllInfoBtn();
 validateForm();
+
+/* ── Pathway 展開/收折 ── */
+function togglePathways(uid, btn) {
+    const tags = document.querySelectorAll('.pathway-tag[data-group="' + uid + '"]');
+    const hidden = [...tags].filter(t => t.style.display === 'none');
+    if (hidden.length > 0) {
+        // 展開
+        hidden.forEach(t => t.style.display = '');
+        btn.textContent = 'Show less';
+    } else {
+        // 收折：只顯示前 5 條
+        let count = 0;
+        tags.forEach(t => {
+            count++;
+            if (count > 5) t.style.display = 'none';
+        });
+        const extra = tags.length - 5;
+        btn.textContent = '+' + extra + ' more';
+    }
+}
 </script>
 </body>
 </html>

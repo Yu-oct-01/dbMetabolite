@@ -119,132 +119,7 @@ function displayVal(?string $val): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - <?= htmlspecialchars($patientId) ?></title>
     <link rel="stylesheet" href="../../css/style.css">
-    <style>
-        .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 20px;
-        }
-
-        .page-title {
-            background: white;
-            padding: 1.5rem 2rem;
-            margin-bottom: 0;
-            border-bottom: 3px solid #3498db;
-        }
-
-        .page-title h1 {
-            font-size: 1.8rem;
-            color: #2c3e50;
-            font-weight: 500;
-        }
-
-        .section-block {
-            background: white;
-            margin-bottom: 0;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .section-header {
-            background: #3498db;
-            color: white;
-            padding: 0.75rem 2rem;
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .section-content {
-            padding: 2rem;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .info-table tr {
-            border-bottom: 1px solid #eee;
-        }
-
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-
-        .info-table td {
-            padding: 0.75rem 0;
-            vertical-align: top;
-        }
-
-        .info-table td:first-child {
-            width: 280px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .info-table td:last-child {
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .btn-back {
-            background: #95a5a6;
-            color: white;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.3s;
-            margin: 1.5rem 2rem;
-        }
-
-        .btn-back:hover { background: #7f8c8d; }
-
-        .alert-danger {
-            background: #fdecea;
-            color: #c0392b;
-            border: 1px solid #e74c3c;
-            border-radius: 4px;
-            padding: 1rem 1.5rem;
-            margin: 1.5rem 0;
-        }
-
-        .metabolite-tag {
-            display: inline-block;
-            background: #eaf4fb;
-            color: #2980b9;
-            border: 1px solid #aed6f1;
-            border-radius: 4px;
-            padding: 0.3rem 0.8rem;
-            margin: 0.25rem 0.25rem 0.25rem 0;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-
-        .metabolite-tag:hover {
-            background: #d6eaf8;
-        }
-
-        .no-data {
-            color: #999;
-            font-style: italic;
-        }
-
-        .section-content a {
-            color: #2980b9;
-            text-decoration: none;
-            line-height: 2;
-            display: block;
-        }
-
-        .section-content a:hover {
-            color: #1a5276;
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="../../css/clinicaldata.css">
 </head>
 <body>
 
@@ -290,18 +165,23 @@ function displayVal(?string $val): string {
 
         <!-- Metabolites Section -->
         <div class="section-block">
-            <div class="section-header">Metabolites</div>
+            <div class="section-header metabolites-header">
+                <span>Metabolites</span>
+                <?php if (!empty($metabolites)): ?>
+                    <span class="metabolites-count-badge"><?= count($metabolites) ?> items</span>
+                <?php endif; ?>
+            </div>
             <div class="section-content">
                 <?php if (empty($metabolites)): ?>
                     <span class="no-data">No metabolite expression data available for this patient.</span>
                 <?php else: ?>
-                    <?php foreach ($metabolites as $m): ?>
-                        <div>
+                    <div class="metabolites-scroll-box">
+                        <?php foreach ($metabolites as $m): ?>
                             <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/">
                                 <?= htmlspecialchars($m['metabolite_name']) ?>
                             </a>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
