@@ -1,6 +1,6 @@
 /* =============================================
    pathway.css  —  Pathway 搜尋 / 結果頁樣式
-   適用：search_pathway.php, results_pathway.php
+   適用：search_pathway.php, results_pathway.php, metabolites.php（Pathway 標籤）
    ============================================= */
 
 /* ---- 結果表格 ---- */
@@ -90,4 +90,44 @@ a.kegg-link {
 
 a.kegg-link:hover {
     text-decoration: underline;
+}
+
+/* ---- Pathway 標籤（metabolites.php 瀏覽頁）---- */
+.pathway-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+}
+
+.pathway-tag {
+    display: inline-block;
+    background: #eaf3fb;
+    color: #1a5a8a;
+    border: 1px solid #b3d4ec;
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+.pathway-tag a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.pathway-tag a:hover {
+    text-decoration: underline;
+}
+
+.pathway-more {
+    display: inline-block;
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 0.78rem;
+    cursor: pointer;
 }

@@ -1,4 +1,5 @@
 config.php 檔的 pass 要改成自己的密碼
+http://dbmetabolite.test/index.php
 
 dbMetabolite/
 ├──metabolite/
