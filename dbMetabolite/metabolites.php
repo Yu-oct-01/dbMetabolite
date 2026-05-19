@@ -31,11 +31,16 @@ $diseaseOptions = [
 // key = $allFields 的 key，value = 資料表實際欄位名稱
 // 尚未建立的欄位不列在這裡，查詢時會自動填空白
 $existingCols = [
-    'hmdb_id'        => 'HMDB_ID',
-    'chebi_id'       => 'CHEBI_ID',
-    'pubchem_id'     => 'Pubchem_ID',
-    'kegg_id'        => 'KEGG_ID',
-    'max_expression' => ['max_expression_546', 'max_expression_552'],  // 兩個 alias
+    'hmdb_id'    => 'HMDB_ID',
+    'chebi_id'   => 'CHEBI_ID',
+    'pubchem_id' => 'Pubchem_ID',
+    'kegg_id'    => 'KEGG_ID',
+];
+
+// Maximum Expression 來源資料表（PDC dataset name => table name）
+$expressionTables = [
+    'PDC000546' => 'cptac3_pdc000546_expressiondata_max',
+    'PDC000552' => 'cptac3_pdc000552_expressiondata_max',
 ];
 
 // link 欄位對應
@@ -50,6 +55,7 @@ $linkCols = [
 $showResults   = false;
 $results       = [];
 $pathwayMap    = [];   // kegg_id => [ ['pathway_id'=>..., 'pathway_name'=>...], ... ]
+$expressionMap = [];   // DMTDB_ID => [ 'PDC000546' => value, 'PDC000552' => value ]
 $total         = 0;
 $totalPages    = 1;
 $errorMsg      = '';
@@ -81,44 +87,32 @@ if (!empty($_GET['diseases'])) {
         $totalPages = max(1, (int)ceil($total / PER_PAGE));
 
         // 固定欄位
-        $selectCols = ['m.DMTDB_ID', 'm.metabolite_name'];
-
-        // 決定是否需要 JOIN 兩張 expression 資料表
-        $needExpr546 = in_array('max_expression', $selectedFields);
-        $needExpr552 = in_array('max_expression', $selectedFields);
+        $selectCols = ['DMTDB_ID', 'metabolite_name'];
 
         // 只 SELECT 資料表中實際存在的欄位；其餘欄位在 PHP 端補 -
         foreach ($selectedFields as $f) {
-            if ($f === 'max_expression') {
-                $selectCols[] = 'e546.average_expression AS max_expression_546';
-                $selectCols[] = 'e552.average_expression AS max_expression_552';
-            } elseif (isset($existingCols[$f]) && !is_array($existingCols[$f])) {
-                $selectCols[] = 'm.' . $existingCols[$f];
+            if (isset($existingCols[$f])) {
+                $selectCols[] = $existingCols[$f];
                 if (isset($linkCols[$f])) {
-                    $selectCols[] = 'm.' . $linkCols[$f];
+                    $selectCols[] = $linkCols[$f];
                 }
             }
         }
 
         // 若有選 pathway 欄位，確保 KEGG_ID 也被 SELECT（用來做 pathway 查詢）
         $needPathway = in_array('pathway', $selectedFields);
-        if ($needPathway && !in_array('m.KEGG_ID', $selectCols)) {
-            $selectCols[] = 'm.KEGG_ID';
+        if ($needPathway && !in_array('KEGG_ID', $selectCols)) {
+            $selectCols[] = 'KEGG_ID';
         }
+
+        // 若有選 max_expression 欄位
+        $needExpression = in_array('max_expression', $selectedFields);
 
         $selectCols = array_unique($selectCols);
-        $colsSql    = implode(', ', $selectCols);
+        $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
         $limit      = PER_PAGE;
 
-        // 依需要組合 LEFT JOIN
-        $joinSql = '';
-        $needMaxExpr = in_array('max_expression', $selectedFields);
-        if ($needMaxExpr) {
-            $joinSql .= ' LEFT JOIN `cptac3_pdc000546_expressiondata_max` e546 ON m.DMTDB_ID = e546.DMTDB_ID';
-            $joinSql .= ' LEFT JOIN `cptac3_pdc000552_expressiondata_max` e552 ON m.DMTDB_ID = e552.DMTDB_ID';
-        }
-
-        $res = $db->query("SELECT $colsSql FROM metabolites_id m{$joinSql} ORDER BY m.DMTDB_ID LIMIT $offset, $limit");
+        $res = $db->query("SELECT $colsSql FROM metabolites_id ORDER BY DMTDB_ID LIMIT $offset, $limit");
         if (!$res) {
             $errorMsg    = '查詢失敗：' . $db->error;
             $showResults = false;
@@ -157,6 +151,25 @@ if (!empty($_GET['diseases'])) {
             }
         }
         // ─────────────────────────────────────────────────────────────
+
+        // ── Maximum Expression 查詢 ───────────────────────────────────
+        if ($needExpression && !empty($results)) {
+            $dmtdbIds    = array_column($results, 'DMTDB_ID');
+            $placeholders = implode(',', array_fill(0, count($dmtdbIds), '?'));
+
+            foreach ($expressionTables as $pdcLabel => $tblName) {
+                $stmt = $db->prepare(
+                    "SELECT `DMTDB_ID`, `average_expression`
+                     FROM `$tblName`
+                     WHERE `DMTDB_ID` IN ($placeholders)"
+                );
+                $stmt->execute(array_values($dmtdbIds));
+                while ($eRow = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $expressionMap[$eRow['DMTDB_ID']][$pdcLabel] = $eRow['average_expression'];
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────
     }
 }
 
@@ -174,7 +187,7 @@ function pageUrl(int $p): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Browse</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/browse.css">
+    <link rel="stylesheet" href="css/metabolites.css">
     <link rel="stylesheet" href="css/pathway.css">
 </head>
 <body>
@@ -278,25 +291,8 @@ function pageUrl(int $p): string {
                         <?php foreach ($selectedFields as $f): ?>
                         <td>
                             <?php
-                            // ── Average Expression 欄位：顯示兩個 PDC tag ──
-                            if ($f === 'max_expression') {
-                                $val546 = $row['max_expression_546'] ?? null;
-                                $val552 = $row['max_expression_552'] ?? null;
-                                if (($val546 === null || $val546 === '') && ($val552 === null || $val552 === '')) {
-                                    echo '-';
-                                } else {
-                                    echo '<div class="expr-tags">';
-                                    if ($val546 !== null && $val546 !== '') {
-                                        echo '<span class="expr-tag expr-tag--546">PDC000546: ' . number_format((float)$val546, 2) . '</span>';
-                                    }
-                                    if ($val552 !== null && $val552 !== '') {
-                                        echo '<span class="expr-tag expr-tag--552">PDC000552: ' . number_format((float)$val552, 2) . '</span>';
-                                    }
-                                    echo '</div>';
-                                }
-
                             // ── Pathway 欄位：從 pathwayMap 撈對應途徑 ──
-                            } elseif ($f === 'pathway') {
+                            if ($f === 'pathway') {
                                 $keggId   = $row['KEGG_ID'] ?? '';
                                 $pathways = (!empty($keggId) && isset($pathwayMap[$keggId]))
                                             ? $pathwayMap[$keggId]
@@ -322,6 +318,23 @@ function pageUrl(int $p): string {
                                         $extra = count($pathways) - $limit;
                                         echo '<span class="pathway-more" onclick="togglePathways(\'' . $uid . '\', this)">'
                                            . '+' . $extra . ' more</span>';
+                                    }
+                                    echo '</div>';
+                                }
+
+                            // ── Maximum Expression 欄位：從 expressionMap 撈各 PDC dataset 的 average_expression ──
+                            } elseif ($f === 'max_expression') {
+                                $dmtId  = $row['DMTDB_ID'];
+                                $expData = $expressionMap[$dmtId] ?? [];
+                                if (empty($expData)) {
+                                    echo '-';
+                                } else {
+                                    echo '<div class="pathway-tags">';
+                                    foreach ($expData as $pdcLabel => $expVal) {
+                                        $formatted = ($expVal !== null) ? number_format((float)$expVal, 2) : 'N/A';
+                                        echo '<span class="pathway-tag">'
+                                           . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($formatted)
+                                           . '</span>';
                                     }
                                     echo '</div>';
                                 }
@@ -380,7 +393,6 @@ function pageUrl(int $p): string {
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>
 <link rel="stylesheet" href="css/metabolites.css">
-<link rel="stylesheet" href="css/pathway.css">
 <script>
 /* ── Chip 互動 ── */
 document.querySelectorAll('.chip').forEach(chip => {

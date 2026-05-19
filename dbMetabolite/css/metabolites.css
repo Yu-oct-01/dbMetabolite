@@ -1,5 +1,5 @@
 /* =============================================
-   css/metabolites.css  —  metabolites.php 專用樣式
+   css/browse.css  —  browse.php 專用樣式
    ============================================= */
 
 .main-container {
@@ -148,34 +148,4 @@
     background: #3498db;
     color: white;
     font-weight: bold;
-}
-
-/* Average Expression Tags */
-.expr-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    max-width: 320px;
-}
-
-.expr-tag {
-    display: inline-block;
-    border-radius: 12px;
-    padding: 2px 9px;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    line-height: 1.5;
-    font-weight: 500;
-}
-
-.expr-tag--546 {
-    background: #eaf3fb;
-    color: #1a5a8a;
-    border: 1px solid #b3d4ec;
-}
-
-.expr-tag--552 {
-    background: #eaf3fb;
-    color: #1a5a8a;
-    border: 1px solid #b3d4ec;
 }

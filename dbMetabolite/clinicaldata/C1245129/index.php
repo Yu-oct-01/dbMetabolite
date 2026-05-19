@@ -63,8 +63,8 @@ foreach ($tables as $tbl) {
 // ── 代謝物表達量查詢 ──────────────────────────────────────────
 // 兩張 expression 表，欄位名稱即病人 ID；值不為 NULL 才列出
 $expressionTables = [
-    'cptac3_pdc000546_expressiondata_mean',
-    'cptac3_pdc000552_expressiondata_mean',
+    'cptac3_pdc000546_expressiondata',
+    'cptac3_pdc000552_expressiondata',
 ];
 
 $metabolites = [];   // [ ['DMTDB_ID'=>..., 'metabolite_name'=>..., 'value'=>...], ... ]

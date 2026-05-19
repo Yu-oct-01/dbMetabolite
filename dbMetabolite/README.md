@@ -29,8 +29,6 @@ dbMetabolite/
 ├── clinicaldata.php
 ├── metabolites.php
 ├── download.php
-├── downloads/          
-│   └── KEGG_keggID_pathwayID_pathwayName.xlsx (代謝物對應代謝途徑檔)
 ├── tutorial.php
 ├── includes/          
 │   ├── footer.php (網站底部的頁尾)
