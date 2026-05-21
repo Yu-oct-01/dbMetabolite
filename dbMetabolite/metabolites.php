@@ -146,6 +146,7 @@ if (!empty($_GET['diseases'])) {
                     $pathwayMap[$kid][] = [
                         'pathway_id'   => $pRow['pathway_id'],
                         'pathway_name' => $pRow['pathway_name'] ?? $pRow['pathway_id'],
+                        'kegg_id'      => $pRow['kegg_id'],
                     ];
                 }
             }
@@ -308,7 +309,10 @@ function pageUrl(int $p): string {
                                     echo '<div class="pathway-tags">';
                                     foreach ($pathways as $i => $pw) {
                                         $hidden = (!$showAll && $i >= $limit) ? ' style="display:none;"' : '';
-                                        $keggUrl = 'https://www.kegg.jp/pathway/' . htmlspecialchars($pw['pathway_id']);
+                                        $keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' . 
+                                                    htmlspecialchars($pw['pathway_id']) . 
+                                                    '&multi_query=' . 
+                                                    htmlspecialchars($pw['kegg_id'] ?? '');
                                         echo '<span class="pathway-tag"' . $hidden . ' data-group="' . $uid . '">'
                                            . '<a href="' . $keggUrl . '" target="_blank" title="' . htmlspecialchars($pw['pathway_id']) . '">'
                                            . htmlspecialchars($pw['pathway_name'])
