@@ -14,6 +14,7 @@ ini_set('display_errors', 1);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Search</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/search.css">
 </head>
 <body>
 
@@ -55,7 +56,8 @@ ini_set('display_errors', 1);
             <button type="submit" class="btn btn-primary">Search</button>
             <button type="button" class="btn btn-danger" onclick="location.href='search.php'">Clear</button>
             <button type="button" class="btn btn-success"
-                    onclick="this.form.querySelector('[name=keyword]').value='HMDB0000259'">Example</button>
+                    onclick="this.form.querySelector('[name=keyword]').value='HMDB0000259'
+                             this.form.search_field[0].checked=true;">Example</button>
         </div>
     </form>
 

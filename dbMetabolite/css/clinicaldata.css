@@ -1,4 +1,9 @@
+/* =============================================
+   css/clinicaldata.css  —  clinicaldata index.php 專用樣式
+   ============================================= */
+
 .main-container {
+    width: 100%; 
     max-width: 1400px;
     margin: 2rem auto;
     padding: 0 20px;

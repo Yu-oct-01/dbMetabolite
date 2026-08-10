@@ -1,4 +1,3 @@
-
 <?php
 // =============================================
 // clinicaldata/[Patient ID]/index.php  —  病人個別頁面
@@ -7,12 +6,27 @@ require_once '../../config.php';
 
 // 從 URL 路徑取得病人 ID
 // REQUEST_URI: /clinicaldata/C3L-07213/  →  C3L-07213
-$patientId = trim(basename(rtrim($_SERVER['REQUEST_URI'], '/')));
+$uriPath   = strtok($_SERVER['REQUEST_URI'], '?');
+$patientId = trim(basename(rtrim($uriPath, '/')));
 
 if ($patientId === '' || $patientId === '.') {
     header('Location: ../../clinicaldata.php');
     exit;
 }
+
+// 解析安全的返回 URL
+$backUrl = '/clinicaldata.php';
+if (!empty($_GET['back'])) {
+    $parsed = parse_url(urldecode($_GET['back']));
+    if (isset($parsed['query']) && ($parsed['path'] ?? '') === '') {
+        // back 只帶 query string（例如 ?diseases[]=...）
+        $backUrl = '/clinicaldata.php?' . $parsed['query'];
+    } elseif (isset($parsed['path']) && preg_match('#^/clinicaldata\.php$#', $parsed['path'])) {
+        $safeQuery = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $backUrl = '/clinicaldata.php' . $safeQuery;
+    }
+}
+$backUrlEscaped = htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8');
 
 // 兩張來源資料表
 $tables = [
@@ -29,6 +43,7 @@ $fieldGroups = [
     ],
     'Disease' => [
         'Disease Type',
+        'Molecular Subtype',
         'Primary Site',
         'Site of Resection or Biopsy',
     ],
@@ -60,11 +75,27 @@ foreach ($tables as $tbl) {
     }
 }
 
+// ── Molecular Subtype 查詢 ──────────────────────────────────
+$molecularSubtype = null;
+
+$subtypeStmt = $db->prepare(
+    "SELECT `MolecularSubtype` 
+     FROM `gbm_molecular_subtypes` 
+     WHERE `Case ID` = ? 
+     LIMIT 1"
+);
+$subtypeStmt->execute([$patientId]);
+$subtypeResult = $subtypeStmt->fetch(PDO::FETCH_ASSOC);
+
+if ($subtypeResult && isset($subtypeResult['MolecularSubtype'])) {
+    $molecularSubtype = $subtypeResult['MolecularSubtype'];
+}
+
 // ── 代謝物表達量查詢 ──────────────────────────────────────────
 // 兩張 expression 表，欄位名稱即病人 ID；值不為 NULL 才列出
 $expressionTables = [
-    'cptac3_pdc000546_expressiondata',
-    'cptac3_pdc000552_expressiondata',
+    'cptac3_pdc000546_expressiondata_max',
+    'cptac3_pdc000552_expressiondata_max',
 ];
 
 $metabolites = [];   // [ ['DMTDB_ID'=>..., 'metabolite_name'=>..., 'value'=>...], ... ]
@@ -119,132 +150,7 @@ function displayVal(?string $val): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - <?= htmlspecialchars($patientId) ?></title>
     <link rel="stylesheet" href="../../css/style.css">
-    <style>
-        .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 20px;
-        }
-
-        .page-title {
-            background: white;
-            padding: 1.5rem 2rem;
-            margin-bottom: 0;
-            border-bottom: 3px solid #3498db;
-        }
-
-        .page-title h1 {
-            font-size: 1.8rem;
-            color: #2c3e50;
-            font-weight: 500;
-        }
-
-        .section-block {
-            background: white;
-            margin-bottom: 0;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .section-header {
-            background: #3498db;
-            color: white;
-            padding: 0.75rem 2rem;
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .section-content {
-            padding: 2rem;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .info-table tr {
-            border-bottom: 1px solid #eee;
-        }
-
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-
-        .info-table td {
-            padding: 0.75rem 0;
-            vertical-align: top;
-        }
-
-        .info-table td:first-child {
-            width: 280px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .info-table td:last-child {
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .btn-back {
-            background: #95a5a6;
-            color: white;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.3s;
-            margin: 1.5rem 2rem;
-        }
-
-        .btn-back:hover { background: #7f8c8d; }
-
-        .alert-danger {
-            background: #fdecea;
-            color: #c0392b;
-            border: 1px solid #e74c3c;
-            border-radius: 4px;
-            padding: 1rem 1.5rem;
-            margin: 1.5rem 0;
-        }
-
-        .metabolite-tag {
-            display: inline-block;
-            background: #eaf4fb;
-            color: #2980b9;
-            border: 1px solid #aed6f1;
-            border-radius: 4px;
-            padding: 0.3rem 0.8rem;
-            margin: 0.25rem 0.25rem 0.25rem 0;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-
-        .metabolite-tag:hover {
-            background: #d6eaf8;
-        }
-
-        .no-data {
-            color: #999;
-            font-style: italic;
-        }
-
-        .section-content a {
-            color: #2980b9;
-            text-decoration: none;
-            line-height: 2;
-            display: block;
-        }
-
-        .section-content a:hover {
-            color: #1a5276;
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="../../css/clinicaldata.css">
 </head>
 <body>
 
@@ -260,7 +166,7 @@ function displayVal(?string $val): string {
         <div class="alert-danger" style="margin: 1.5rem 0;">
             Patient <strong><?= htmlspecialchars($patientId) ?></strong> was not found in the database.
         </div>
-        <a href="javascript:history.back()" class="btn-back">← Back to Clinical Data</a>
+        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
 
     <?php else: ?>
 
@@ -270,7 +176,7 @@ function displayVal(?string $val): string {
         </div>
 
         <!-- 返回按鈕 -->
-        <a href="javascript:history.back()" class="btn-back">← Back to Clinical Data</a>
+        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
 
         <?php foreach ($fieldGroups as $groupName => $fields): ?>
         <div class="section-block">
@@ -280,7 +186,16 @@ function displayVal(?string $val): string {
                     <?php foreach ($fields as $field): ?>
                     <tr>
                         <td><?= htmlspecialchars($field) ?></td>
-                        <td><?= displayVal($row[$field] ?? null) ?></td>
+                        <td>
+                            <?php
+                            // 特殊處理 Molecular Subtype
+                            if ($field === 'Molecular Subtype') {
+                                echo displayVal($molecularSubtype);
+                            } else {
+                                echo displayVal($row[$field] ?? null);
+                            }
+                            ?>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
@@ -290,18 +205,23 @@ function displayVal(?string $val): string {
 
         <!-- Metabolites Section -->
         <div class="section-block">
-            <div class="section-header">Metabolites</div>
+            <div class="section-header metabolites-header">
+                <span>Metabolites</span>
+                <?php if (!empty($metabolites)): ?>
+                    <span class="metabolites-count-badge"><?= count($metabolites) ?> items</span>
+                <?php endif; ?>
+            </div>
             <div class="section-content">
                 <?php if (empty($metabolites)): ?>
                     <span class="no-data">No metabolite expression data available for this patient.</span>
                 <?php else: ?>
-                    <?php foreach ($metabolites as $m): ?>
-                        <div>
-                            <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/">
+                    <div class="metabolites-scroll-box">
+                        <?php foreach ($metabolites as $m): ?>
+                            <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/?from=clinical&patient=<?= urlencode($patientId) ?>&back=<?= urlencode($backUrl) ?>">
                                 <?= htmlspecialchars($m['metabolite_name']) ?>
                             </a>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

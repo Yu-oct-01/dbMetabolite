@@ -46,12 +46,14 @@ if ($keyword !== '') {
             m.metabolite_type,
             m.kegg_id,
             m.metabolite_name,
-            p.pathway_name
+            p.pathway_name,
+            (CASE WHEN mi.KEGG_ID IS NOT NULL THEN 1 ELSE 0 END) AS in_dmtdb
         FROM kegg_hsa_metabolism_pathways m
         LEFT JOIN kegg_hsa_pathwayname p ON p.pathway_id = m.pathway_id
+        LEFT JOIN metabolites_id mi ON mi.KEGG_ID = m.kegg_id
         WHERE {$where_field} LIKE :kw
-          AND m.metabolite_type = :type
-        ORDER BY m.pathway_id, m.kegg_id
+        AND m.metabolite_type = :type
+        ORDER BY in_dmtdb DESC, m.pathway_id, m.kegg_id
         LIMIT 2000
     ";
 
@@ -76,6 +78,7 @@ function kegg_url(string $type, string $kegg_id): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Pathway Results</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/search.css">
     <link rel="stylesheet" href="/css/pathway.css">
 </head>
 <body>
@@ -149,7 +152,12 @@ function kegg_url(string $type, string $kegg_id): string {
                     </td>
 
                     <!-- Metabolite Name -->
-                    <td><?= htmlspecialchars($row['metabolite_name'] ?? '—') ?></td>
+                    <td>
+                        <?= htmlspecialchars($row['metabolite_name'] ?? '—') ?>
+                        <?php if (!empty($row['in_dmtdb'])): ?>
+                            <span class="badge badge-dmtdb" title="此代謝物已收錄於本資料庫">In DMTDB</span>
+                        <?php endif; ?>
+                    </td>
 
                     <!-- Pathway Name -->
                     <td><?= htmlspecialchars($row['pathway_name'] ?? '—') ?></td>

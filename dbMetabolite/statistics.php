@@ -41,12 +41,52 @@ $clinicalTotal    = $clinical552Count + $clinical546Count;
                 <tr>
                     <td>1</td>
                     <td>Number of metabolites</td>
-                    <td><?= $metaboliteCount ?></td>
+                    <td><?= $metaboliteCount ?> metabolites</td>
                 </tr>
                 <tr>
                     <td>2</td>
                     <td>Number of clinical data</td>
-                    <td><?= $clinicalTotal ?></td>
+                    <td><?= $clinicalTotal ?> patients</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Metabolite expression</td>
+                    <td><?= $metaboliteCount ?> metabolites x <?= $clinicalTotal ?> patients</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Gene expression</td>
+                    <td>145 patients x 59427 genes</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Molecular subtypes </td>
+                    <td>145 patients x 3 subtypes</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Stemness score</td>
+                    <td>145 patients x 4 types</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>KEGG human pathway</td>
+                    <td>370 pathways</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Immune cell infiltration ratio</td>
+                    <td>191 patients x 36 immune cells</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td>Immune score</td>
+                    <td>191 patients x 3 scores</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td>Drug resistance</td>
+                    <td>191 patients</td>
                 </tr>
             </tbody>
         </table>

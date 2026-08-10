@@ -1,0 +1,436 @@
+/* =============================================
+   css/metabolite.css  —  metabolite index.php 專用樣式
+   ============================================= */
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--color-text-secondary, #888);
+    margin-bottom: 1.25rem;
+}
+.breadcrumb a {
+    color: var(--color-link, #185FA5);
+    text-decoration: none;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+.bc-sep { opacity: 0.5; }
+
+/* ── Back to Browse 按鈕 ─────────────────────── */
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary, #111);
+    background: var(--color-bg-secondary, #f0f0f0);
+    border: 0.5px solid var(--color-border, #d0d0d0);
+    border-radius: 6px;
+    padding: 6px 14px;
+    text-decoration: none;
+    cursor: pointer;
+    margin-bottom: 1.25rem;
+    transition: background 0.12s, border-color 0.12s;
+}
+.btn-back:hover {
+    background: #e4e4e4;
+    border-color: #bbb;
+    text-decoration: none;
+}
+
+/* ── 頁面標題列 ──────────────────────────────── */
+.page-header {
+    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+.page-header h1 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--color-text-primary, #111);
+}
+.id-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── 徽章 ────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 6px;
+    line-height: 1.4;
+}
+.badge-info    { background: #e6f1fb; color: #0c447c; }
+.badge-success { background: #eaf3de; color: #27500a; }
+.badge-neutral {
+    background: var(--color-bg-secondary, #f5f5f5);
+    color: var(--color-text-secondary, #666);
+    border: 0.5px solid var(--color-border, #e0e0e0);
+}
+
+/* ── Tab 導覽列 ──────────────────────────────── */
+.nav-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--color-text-secondary, #666);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s;
+    outline: none;
+}
+.tab:hover { color: var(--color-text-primary, #111); }
+.tab.active {
+    color: var(--color-text-primary, #111);
+    border-bottom-color: var(--color-text-primary, #111);
+    font-weight: 500;
+}
+
+/* ── 雙欄版面 ────────────────────────────────── */
+.content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 1.25rem;
+    align-items: start;
+}
+@media (max-width: 768px) {
+    .content-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 區塊卡片 ────────────────────────────────── */
+.section-block {
+    border: 0.5px solid var(--color-border, #e0e0e0);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+}
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary, #666);
+    background: var(--color-bg-secondary, #f7f7f7);
+    padding: 8px 14px;
+    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
+}
+.section-content {
+    padding: 1rem 1.25rem;
+}
+.section-content-flush {
+    padding: 0.25rem 1.25rem;
+}
+
+/* ── 資訊表格 ────────────────────────────────── */
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.info-table tr {
+    border-bottom: 0.5px solid var(--color-border, #e8e8e8);
+}
+.info-table tr:last-child { border-bottom: none; }
+.info-table td {
+    padding: 9px 0;
+    font-size: 14px;
+    vertical-align: top;
+    line-height: 1.5;
+}
+.info-table td:first-child {
+    color: var(--color-text-secondary, #666);
+    width: 42%;
+    padding-right: 12px;
+}
+.info-table td.text-muted {
+    color: var(--color-text-secondary, #666);
+    font-size: 13px;
+    line-height: 1.6;
+}
+.inchikey {
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    background: var(--color-bg-secondary, #f5f5f5);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* ── 物化性質格線 ─────────────────────────────── */
+.property-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+@media (max-width: 480px) {
+    .property-grid { grid-template-columns: 1fr; }
+}
+.prop-card {
+    background: var(--color-bg-secondary, #f7f7f7);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.prop-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary, #888);
+    margin-bottom: 4px;
+}
+.prop-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary, #888);
+}
+
+/* ── 側欄：結構圖 ─────────────────────────────── */
+.structure-box {
+    background: var(--color-bg-secondary, #f7f7f7);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 1rem;
+}
+.structure-img {
+    max-width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+}
+.structure-caption {
+    font-size: 12px;
+    color: var(--color-text-secondary, #888);
+    text-align: center;
+    margin-top: 8px;
+}
+
+/* ── 外部連結清單 ────────────────────────────── */
+.ext-link-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.ext-link-list li {
+    padding: 9px 0;
+    border-bottom: 0.5px solid var(--color-border, #f0f0f0);
+}
+.ext-link-list li:last-child { border-bottom: none; }
+.ext-link-list a {
+    font-size: 13px;
+    color: var(--color-link, #185FA5);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.ext-link-list a:hover { text-decoration: underline; }
+.ext-source {
+    font-size: 11px;
+    color: var(--color-text-secondary, #999);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+/* ── 相關代謝物標籤 ──────────────────────────── */
+.metabolite-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.chip {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--color-bg-secondary, #f5f5f5);
+    border: 0.5px solid var(--color-border, #e0e0e0);
+    color: var(--color-text-primary, #111);
+    text-decoration: none;
+    transition: background 0.12s;
+    white-space: nowrap;
+}
+.chip:hover {
+    background: #fff;
+    border-color: #aaa;
+}
+
+/* ── 計數徽章 ────────────────────────────────── */
+.count-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--color-bg-primary, #fff);
+    border: 0.5px solid var(--color-border, #e0e0e0);
+    color: var(--color-text-secondary, #888);
+}
+
+/* ── 無資料提示 ──────────────────────────────── */
+.no-data {
+    font-size: 13px;
+    color: var(--color-text-secondary, #999);
+}
+
+/* ── 警告訊息 ────────────────────────────────── */
+.alert-danger {
+    background: #FCEBEB;
+    color: #791F1F;
+    border: 0.5px solid #F09595;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    margin: 1.5rem 0;
+}
+
+.structure-box.synonym-scroll {
+    max-height: 140px;
+    overflow-y: auto;
+    background: #fafbfc;
+    border: 1px solid #d0d7de;
+    border-radius: 0.5em;
+    padding: 0.6em 0.8em;
+    box-sizing: border-box;
+    font-size: 0.95em;
+    line-height: 1.6;
+    word-break: break-all;
+}
+
+.expression-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+}
+
+.expression-tag {
+    display: inline-block;
+    background: #eaf3fb;
+    color: #1a5a8a;
+    border: 1px solid #b3d4ec;
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+/* ── 主容器留白 ──────────────────────────────── */
+.main-container {
+    padding: 1.5rem 1.25rem;
+}
+
+/* ── 代謝物個別頁面專用 Pathway 標籤樣式 ── */
+.metab-pathway-tags {
+    display: flex;
+    flex-direction: column;     /* 強制讓標籤垂直排列（每條都換行） */
+    align-items: flex-start;    /* 讓標籤寬度貼合文字，而不是撐滿整個區塊 */
+    gap: 8px;                   /* 調整每條換行之間的上下間距 */
+    margin: 4px 0;
+}
+
+.metab-pathway-tag {
+    display: block;
+    background: #eaf3fb;
+    color: #1a5a8a;
+    border: 1px solid #b3d4ec;
+    border-radius: 12px;
+    padding: 6px 12px;          /* 稍微增加上下微調，讓單條滑動時比例更好看 */
+    font-size: 13px;
+    line-height: 1.4;
+    
+    /* ── 關鍵：限制最大寬度，並允許內部左右滑動 ── */
+    max-width: 100%;            /* 最寬就是跟著外面的卡片邊框一樣寬 */
+    overflow-x: auto;           /* 內容超出標籤本身時，允許在內部左右滑動 */
+    white-space: nowrap;        /* 強制文字不換行 */
+    box-sizing: border-box;     /* 防止 padding 撐破 max-width */
+    
+    -webkit-overflow-scrolling: touch; /* 讓手機平板滑動更順暢 */
+}
+
+/* 隱藏標籤內部肥大的滾動條，維持美觀 */
+.metab-pathway-tag::-webkit-scrollbar {
+    height: 0px;                /* 高度設為 0，直接隱藏滾動條，但依然可以用手指或滑鼠滾輪滑動 */
+    display: none;
+}
+
+.metab-pathway-tag a {
+    color: #1a5a8a;
+    text-decoration: none;
+    font-weight: normal;
+    display: inline-block;      /* 確保連結能完整撐開滑動區域 */
+}
+
+.metab-pathway-tag:hover {
+    background-color: #dbeaf7;
+    border-color: #8cbde3;
+}
+
+.metab-pathway-tag a:hover {
+    text-decoration: underline;
+}
+
+/* ── Hazard Ratio 顏色標示（同 metabolites.php）── */
+.hazard-ratio-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+}
+.hazard-ratio-tag {
+    display: inline-block;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    line-height: 1.5;
+    font-weight: 600;
+}
+.hazard-ratio-tag.risk-factor {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef5350;
+}
+.hazard-ratio-tag.protective-factor {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #42a5f5;
+}
+.hazard-ratio-tag.non-significant {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #bdbdbd;
+}
+.hazard-ratio-more {
+    display: inline-block;
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+.hazard-ratio-more:hover { background: #e0e0e0; }

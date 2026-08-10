@@ -1,4 +1,3 @@
-
 <?php
 // =============================================
 // clinicaldata/[Patient ID]/index.php  —  病人個別頁面
@@ -7,12 +6,27 @@ require_once '../../config.php';
 
 // 從 URL 路徑取得病人 ID
 // REQUEST_URI: /clinicaldata/C3L-07213/  →  C3L-07213
-$patientId = trim(basename(rtrim($_SERVER['REQUEST_URI'], '/')));
+$uriPath   = strtok($_SERVER['REQUEST_URI'], '?');
+$patientId = trim(basename(rtrim($uriPath, '/')));
 
 if ($patientId === '' || $patientId === '.') {
     header('Location: ../../clinicaldata.php');
     exit;
 }
+
+// 解析安全的返回 URL
+$backUrl = '/clinicaldata.php';
+if (!empty($_GET['back'])) {
+    $parsed = parse_url(urldecode($_GET['back']));
+    if (isset($parsed['query']) && ($parsed['path'] ?? '') === '') {
+        // back 只帶 query string（例如 ?diseases[]=...）
+        $backUrl = '/clinicaldata.php?' . $parsed['query'];
+    } elseif (isset($parsed['path']) && preg_match('#^/clinicaldata\.php$#', $parsed['path'])) {
+        $safeQuery = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $backUrl = '/clinicaldata.php' . $safeQuery;
+    }
+}
+$backUrlEscaped = htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8');
 
 // 兩張來源資料表
 $tables = [
@@ -20,7 +34,7 @@ $tables = [
     'cptac3_pdc000552_clinicaldata',
 ];
 
-// 要顯示的欄位群組（與 clinicaldata.php 一致）
+// 要顯示的欄位群組
 $fieldGroups = [
     'Basic Information' => [
         'Sex',
@@ -29,6 +43,7 @@ $fieldGroups = [
     ],
     'Disease' => [
         'Disease Type',
+        'Molecular Subtype',
         'Primary Site',
         'Site of Resection or Biopsy',
     ],
@@ -39,11 +54,35 @@ $fieldGroups = [
         'Progression or Recurrence',
         'Last Known Disease Status',
         'Days to Last Known Disease Status',
+        'Drug Resistance',
+
+        'OS Time',
+        'OS Status',
+        'PFS Time',
+        'PFS Status',
+    ],
+    'Stemness & Hypoxia Scores' => [
+        'BENPORATH_ES_1',
+        'BENPORATH_ES_2',
+        'WONG_EMBRYONIC_STEM_CELL_CORE',
+        'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM',
+        'Hallmark Hypoxia',
+    ],
+    'ESTIMATE Scores' => [
+        'Immune Score',
+        'Stroma Score',
+        'Microenvironment Score',
     ],
     'Exposure' => [
         'Alcohol Intensity',
     ],
     // Metabolites 由 expression 資料動態產生，不走 fieldGroups
+];
+$fieldMapping = [
+    'OS Time'          => 'OS_Time',           // 如果資料庫是這個名稱，就保持不變
+    'OS Status'        => 'OS_Status',
+    'PFS Time'         => 'PFS_Time',
+    'PFS Status'       => 'PFS_Status',
 ];
 
 $db  = getDB();
@@ -58,6 +97,18 @@ foreach ($tables as $tbl) {
         $row = $result;
         break;
     }
+}
+
+// ── gbm_immune_data 查詢 ────────────────────────────────────
+$immuneRow = null;
+$immuneStmt = $db->prepare(
+    "SELECT * FROM `gbm_immune_data` WHERE `Case ID` = ? LIMIT 1"
+);
+$immuneStmt->execute([$patientId]);
+$immuneResult = $immuneStmt->fetch(PDO::FETCH_ASSOC);
+
+if ($immuneResult) {
+    $immuneRow = $immuneResult;
 }
 
 // ── 代謝物表達量查詢 ──────────────────────────────────────────
@@ -135,7 +186,7 @@ function displayVal(?string $val): string {
         <div class="alert-danger" style="margin: 1.5rem 0;">
             Patient <strong><?= htmlspecialchars($patientId) ?></strong> was not found in the database.
         </div>
-        <a href="javascript:history.back()" class="btn-back">← Back to Clinical Data</a>
+        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
 
     <?php else: ?>
 
@@ -145,7 +196,7 @@ function displayVal(?string $val): string {
         </div>
 
         <!-- 返回按鈕 -->
-        <a href="javascript:history.back()" class="btn-back">← Back to Clinical Data</a>
+        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
 
         <?php foreach ($fieldGroups as $groupName => $fields): ?>
         <div class="section-block">
@@ -155,7 +206,32 @@ function displayVal(?string $val): string {
                     <?php foreach ($fields as $field): ?>
                     <tr>
                         <td><?= htmlspecialchars($field) ?></td>
-                        <td><?= displayVal($row[$field] ?? null) ?></td>
+                        <td>
+                            <?php
+                            // 定義哪些欄位要從 gbm_immune_data 表中讀取，並對應到資料庫欄位名稱
+                            $immuneFieldsMapping = [
+                                'Molecular Subtype'                         => 'MolecularSubtype',
+                                'drug_resistance'                           => 'drug_resistance', // 如果你想擺在 Survival
+                                'Drug Resistance'                           => 'drug_resistance', // 相容原本表格寫法
+                                'BENPORATH_ES_1'                            => 'BENPORATH_ES_1',
+                                'BENPORATH_ES_2'                            => 'BENPORATH_ES_2',
+                                'WONG_EMBRYONIC_STEM_CELL_CORE'             => 'WONG_EMBRYONIC_STEM_CELL_CORE',
+                                'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM' => 'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM',
+                                'Hallmark Hypoxia'                          => 'HALLMARK_HYPOXIA', // 對應表格畫面的名稱
+                                'Immune Score'                              => 'immune score',
+                                'Stroma Score'                              => 'stroma score',
+                                'Microenvironment Score'                    => 'microenvironment score'
+                            ];
+
+                            if (array_key_exists($field, $immuneFieldsMapping)) {
+                                $dbCol = $immuneFieldsMapping[$field];
+                                echo displayVal($immuneRow[$dbCol] ?? null);
+                            } else {
+                                $dbColumnName = $fieldMapping[$field] ?? $field;
+                                echo displayVal($row[$dbColumnName] ?? null);
+                            }
+                            ?>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
@@ -177,7 +253,7 @@ function displayVal(?string $val): string {
                 <?php else: ?>
                     <div class="metabolites-scroll-box">
                         <?php foreach ($metabolites as $m): ?>
-                            <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/">
+                            <a href="/metabolite/<?= strtolower(urlencode($m['DMTDB_ID'])) ?>/?from=clinical&patient=<?= urlencode($patientId) ?>&back=<?= urlencode($backUrl) ?>">
                                 <?= htmlspecialchars($m['metabolite_name']) ?>
                             </a>
                         <?php endforeach; ?>

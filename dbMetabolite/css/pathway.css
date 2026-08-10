@@ -131,3 +131,14 @@ a.kegg-link:hover {
     font-size: 0.78rem;
     cursor: pointer;
 }
+
+.badge-dmtdb {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #2980b9;
+    border-radius: 10px;
+}

@@ -1,0 +1,65 @@
+/* =============================================
+   css/hazard-ratio.css  —  Hazard Ratio 顏色標示
+   ============================================= */
+
+.hazard-ratio-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+}
+
+.hazard-ratio-tag {
+    display: inline-block;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    line-height: 1.5;
+    font-weight: 600;
+}
+
+/* 危險因子 (HR > 1 & p < 0.05) - 紅色 */
+.hazard-ratio-tag.risk-factor {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef5350;
+}
+
+/* 保護因子 (HR < 1 & p < 0.05) - 藍色 */
+.hazard-ratio-tag.protective-factor {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #42a5f5;
+}
+
+/* 無顯著意義 (p >= 0.05) - 灰色 */
+.hazard-ratio-tag.non-significant {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #bdbdbd;
+}
+
+/* p-value 顯示 */
+.hazard-ratio-pvalue {
+    font-size: 0.7rem;
+    opacity: 0.9;
+    margin-top: 1px;
+}
+
+/* 更多按鈕 */
+.hazard-ratio-more {
+    display: inline-block;
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.hazard-ratio-more:hover {
+    background: #e0e0e0;
+}

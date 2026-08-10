@@ -95,6 +95,7 @@ function pageUrl(int $p): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results — Metabolite Database</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/search.css">
 </head>
 <body>
 
@@ -135,8 +136,8 @@ function pageUrl(int $p): string {
                     <?php foreach ($results as $row): ?>
                         <tr>
                             <td>
-                                <a href="metabolite/<?= urlencode(strtolower($row['DMTDB_ID'])) ?>/">
-                                    <?= htmlspecialchars($row['DMTDB_ID']) ?>
+                                <a href="/metabolite/<?php echo strtolower($row['DMTDB_ID']); ?>/">
+                                    <?php echo htmlspecialchars($row['DMTDB_ID']); ?>
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($row['metabolite_name']) ?></td>

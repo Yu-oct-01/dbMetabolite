@@ -16,6 +16,23 @@ if ($dmtdbId === '' || $dmtdbId === '.') {
 
 $db = getDB();
 
+
+// 從clinical個別頁面進代謝物個別頁面-->讀取來源參數
+$fromClinical = isset($_GET['from']) && $_GET['from'] === 'clinical';
+$fromPatient  = '';
+
+if ($fromClinical && isset($_GET['patient'])) {
+    // 白名單驗證，只允許合法 Patient ID 格式
+    $raw = $_GET['patient'];
+    if (preg_match('/^[A-Za-z0-9\-]+$/', $raw)) {
+        $fromPatient = $raw;
+    } else {
+        $fromClinical = false;
+    }
+}
+
+
+
 // ── 取得 metabolite_name 與 average_expression ───────────────
 $metaboliteName = '';
 $expressionData = [];   // ['PDC000546' => 1234.56, 'PDC000552' => 7890.12]
@@ -35,6 +52,86 @@ foreach ($expressionTables as $pdc => $eTbl) {
     }
 }
 if ($metaboliteName === '') $metaboliteName = $dmtdbId;
+
+// ── 取得 Molecular Subtypes ─────────────────────────────────
+$molecularSubtypeData = []; // 用來儲存格式：['PDC000546' => ['subtype' => '...', 'index' => '...']]
+$molecularTables = [
+    'PDC000546' => 'cptac3_pdc000546_metabolite_molecular',
+    'PDC000552' => 'cptac3_pdc000552_metabolite_molecular',
+];
+foreach ($molecularTables as $pdc => $mTbl) {
+    // 同時選取 MAX_concentration_subtype 與 Subtype_specificity_index
+    $q = $db->prepare("SELECT MAX_concentration_subtype, Subtype_specificity_index FROM `$mTbl` WHERE `DMTDB_ID` = ? LIMIT 1");
+    $q->execute([$dmtdbId]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['MAX_concentration_subtype'])) {
+        $molecularSubtypeData[$pdc] = [
+            'subtype' => $row['MAX_concentration_subtype'],
+            'index'   => isset($row['Subtype_specificity_index']) ? $row['Subtype_specificity_index'] : '-'
+        ];
+    }
+}
+
+// ── 取得 Hazard Ratio (Prognosis Information) ────────────────
+$hazardRatioData = [];
+$hazardRatioTables = [
+    'PDC000546' => 'cptac3_pdc000546_hazard_ratio_max',
+    'PDC000552' => 'cptac3_pdc000552_hazard_ratio_max',
+];
+foreach ($hazardRatioTables as $pdc => $hTbl) {
+    $q = $db->prepare("SELECT hazard_ratio_OS, hazard_ratio_PFS, OS_p_value, PFS_p_value FROM `$hTbl` WHERE `DMTDB_ID` = ? LIMIT 1");
+    $q->execute([$dmtdbId]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        if (isset($row['hazard_ratio_OS'])) {
+            $hazardRatioData[$pdc]['os_hazard_ratio'] = $row['hazard_ratio_OS'];
+            $hazardRatioData[$pdc]['os_p_value']      = $row['OS_p_value'] ?? null;
+        }
+        if (isset($row['hazard_ratio_PFS'])) {
+            $hazardRatioData[$pdc]['pfs_hazard_ratio'] = $row['hazard_ratio_PFS'];
+            $hazardRatioData[$pdc]['pfs_p_value']      = $row['PFS_p_value'] ?? null;
+        }
+    }
+}
+
+// 產生單一 HR 分類標籤的小工具函式（複製自 metabolites.php 的邏輯）
+function render_hazard_ratio_tags(array $hazardRatioData, string $type, string $dmtdbId): string {
+    $uid = 'hr_' . $type . '_' . htmlspecialchars($dmtdbId);
+    $tagCount = 0;
+    $html = '';
+    foreach ($hazardRatioData as $pdcLabel => $vals) {
+        $valKey = $type . '_hazard_ratio';
+        $pKey   = $type . '_p_value';
+        if (!isset($vals[$valKey])) continue;
+
+        $tagCount++;
+        $val    = $vals[$valKey];
+        $pValue = $vals[$pKey] ?? null;
+
+        $className = 'non-significant';
+        if ($pValue !== null && $pValue < 0.05) {
+            if ($val > 1)      $className = 'risk-factor';
+            elseif ($val < 1)  $className = 'protective-factor';
+        }
+        $labelText = $className === 'risk-factor' ? 'Risk Factor'
+                    : ($className === 'protective-factor' ? 'Protective Factor' : 'Non-significant');
+        $hrTitle = 'HR=' . (($val !== null) ? $val : 'N/A') . ', p=' . (($pValue !== null) ? $pValue : 'N/A');
+        $hidden  = ($tagCount > 3) ? ' style="display:none;"' : '';
+
+        $html .= '<span class="hazard-ratio-tag ' . $className . '"' . $hidden
+               . ' data-group="' . $uid . '" title="' . htmlspecialchars($hrTitle) . '">'
+               . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($labelText) . '</span>';
+    }
+    if ($tagCount === 0) return '-';
+
+    $out = '<div class="hazard-ratio-tags">' . $html;
+    if ($tagCount > 3) {
+        $extra = $tagCount - 3;
+        $out .= '<span class="hazard-ratio-more" onclick="toggleHazardRatios(\'' . $uid . '\', this)">+' . $extra . ' more</span>';
+    }
+    $out .= '</div>';
+    return $out;
+}
 
 // ── 取得 external links（從 metabolites_id 取得）──────────
 $externalLinks = [];
@@ -56,24 +153,64 @@ if ($linkRow) {
     }
 }
 
-// ── Synonyms 查詢 ────────────────────
+// ── index.php Synonyms 查詢 ──────────
 $synonyms = [];
 if ($linkRow && !empty($linkRow['HMDB_ID'])) {
-    $synStmt = $db->prepare("SELECT DISTINCT synonyms FROM hmdb_synonyms WHERE HMDB_ID = ? ORDER BY synonyms");
+    // 改為直接撈取多列並明確指定排序，不使用 GROUP_CONCAT 避免特殊符號或長度截斷問題
+    $synStmt = $db->prepare(
+        "SELECT DISTINCT synonyms 
+         FROM hmdb_synonyms 
+         WHERE HMDB_ID = ? 
+         ORDER BY synonyms ASC"
+    );
     $synStmt->execute([$linkRow['HMDB_ID']]);
+    
+    // 直接將所有 rows 轉為一維陣列
     $synonyms = $synStmt->fetchAll(PDO::FETCH_COLUMN);
 }
-// ── Back to Browse URL：優先使用 HTTP_REFERER，fallback 到 /metabolites.php ──
+
+// ── index.php Pathway 查詢 ──────────
+$pathways = [];
+if ($linkRow && !empty($linkRow['KEGG_ID'])) {
+    $keggId = $linkRow['KEGG_ID'];
+    $pwStmt = $db->prepare(
+        "SELECT p.pathway_id, n.pathway_name
+         FROM kegg_hsa_metabolism_pathways p
+         LEFT JOIN kegg_hsa_pathwayname n USING (pathway_id)
+         WHERE p.kegg_id = ?
+         ORDER BY p.pathway_id ASC"
+    );
+    $pwStmt->execute([$keggId]);
+    $pathways = $pwStmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ── Back URL 決定邏輯 ──────────────────────────────────────────
 $backUrl = '/metabolites.php';
-if (!empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
+
+if (!empty($_GET['back'])) {
+    $decoded = urldecode($_GET['back']);
+    $parsed  = parse_url($decoded);
+    $path    = $parsed['path'] ?? '';
+    if ($path === '' && isset($parsed['query'])) {
+        // back 只帶 query string（?diseases[]=...）
+        $backUrl = '/clinicaldata.php?' . $parsed['query'];
+    } elseif (preg_match('#^/clinicaldata\.php$#', $path)) {
+        $safeQuery = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $backUrl   = '/clinicaldata.php' . $safeQuery;
+    }
+} elseif (!empty($_SERVER['HTTP_REFERER'])) {
+    $ref     = $_SERVER['HTTP_REFERER'];
     $refPath = parse_url($ref, PHP_URL_PATH) ?? '';
-    // 只允許站內頁面（避免 open redirect）
-    $allowedPaths = ['/metabolites.php', '/search/results_name.php', '/search/results_id.php',
-                     '/search/results_pathway.php', '/search/results_tme.php'];
+    $allowedPaths = [
+        '/metabolites.php',
+        '/search/results_name.php',
+        '/search/results_id.php',
+        '/search/results_pathway.php',
+        '/search/results_tme.php',
+    ];
     foreach ($allowedPaths as $p) {
         if (str_starts_with($refPath, $p) || $refPath === $p) {
-            $backUrl = $ref; // 保留完整 URL（含 query string）
+            $backUrl = $ref;
             break;
         }
     }
@@ -85,351 +222,7 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database — <?= htmlspecialchars($metaboliteName) ?></title>
     <link rel="stylesheet" href="../../css/style.css">
-    <style>
-/* =============================================
-   metabolite page styles
-   ============================================= */
-
-/* ── 麵包屑 ──────────────────────────────────── */
-.breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--color-text-secondary, #888);
-    margin-bottom: 1.25rem;
-}
-.breadcrumb a {
-    color: var(--color-link, #185FA5);
-    text-decoration: none;
-}
-.breadcrumb a:hover { text-decoration: underline; }
-.bc-sep { opacity: 0.5; }
-
-/* ── Back to Browse 按鈕 ─────────────────────── */
-.btn-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary, #111);
-    background: var(--color-bg-secondary, #f0f0f0);
-    border: 0.5px solid var(--color-border, #d0d0d0);
-    border-radius: 6px;
-    padding: 6px 14px;
-    text-decoration: none;
-    cursor: pointer;
-    margin-bottom: 1.25rem;
-    transition: background 0.12s, border-color 0.12s;
-}
-.btn-back:hover {
-    background: #e4e4e4;
-    border-color: #bbb;
-    text-decoration: none;
-}
-
-/* ── 頁面標題列 ──────────────────────────────── */
-.page-header {
-    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-}
-.page-header h1 {
-    font-size: 24px;
-    font-weight: 500;
-    margin-bottom: 8px;
-    color: var(--color-text-primary, #111);
-}
-.id-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-/* ── 徽章 ────────────────────────────────────── */
-.badge {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 3px 10px;
-    border-radius: 6px;
-    line-height: 1.4;
-}
-.badge-info    { background: #e6f1fb; color: #0c447c; }
-.badge-success { background: #eaf3de; color: #27500a; }
-.badge-neutral {
-    background: var(--color-bg-secondary, #f5f5f5);
-    color: var(--color-text-secondary, #666);
-    border: 0.5px solid var(--color-border, #e0e0e0);
-}
-
-/* ── Tab 導覽列 ──────────────────────────────── */
-.nav-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
-    margin-bottom: 1.5rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.tab {
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: 8px 16px;
-    font-size: 13px;
-    color: var(--color-text-secondary, #666);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.15s;
-    outline: none;
-}
-.tab:hover { color: var(--color-text-primary, #111); }
-.tab.active {
-    color: var(--color-text-primary, #111);
-    border-bottom-color: var(--color-text-primary, #111);
-    font-weight: 500;
-}
-
-/* ── 雙欄版面 ────────────────────────────────── */
-.content-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    gap: 1.25rem;
-    align-items: start;
-}
-@media (max-width: 768px) {
-    .content-grid { grid-template-columns: 1fr; }
-}
-
-/* ── 區塊卡片 ────────────────────────────────── */
-.section-block {
-    border: 0.5px solid var(--color-border, #e0e0e0);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 1.25rem;
-}
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--color-text-secondary, #666);
-    background: var(--color-bg-secondary, #f7f7f7);
-    padding: 8px 14px;
-    border-bottom: 0.5px solid var(--color-border, #e0e0e0);
-}
-.section-content {
-    padding: 1rem 1.25rem;
-}
-.section-content-flush {
-    padding: 0.25rem 1.25rem;
-}
-
-/* ── 資訊表格 ────────────────────────────────── */
-.info-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.info-table tr {
-    border-bottom: 0.5px solid var(--color-border, #e8e8e8);
-}
-.info-table tr:last-child { border-bottom: none; }
-.info-table td {
-    padding: 9px 0;
-    font-size: 14px;
-    vertical-align: top;
-    line-height: 1.5;
-}
-.info-table td:first-child {
-    color: var(--color-text-secondary, #666);
-    width: 42%;
-    padding-right: 12px;
-}
-.info-table td.text-muted {
-    color: var(--color-text-secondary, #666);
-    font-size: 13px;
-    line-height: 1.6;
-}
-.inchikey {
-    font-family: monospace;
-    font-size: 12px;
-    word-break: break-all;
-    background: var(--color-bg-secondary, #f5f5f5);
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-/* ── 物化性質格線 ─────────────────────────────── */
-.property-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-}
-@media (max-width: 480px) {
-    .property-grid { grid-template-columns: 1fr; }
-}
-.prop-card {
-    background: var(--color-bg-secondary, #f7f7f7);
-    border-radius: 8px;
-    padding: 10px 12px;
-}
-.prop-label {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-text-secondary, #888);
-    margin-bottom: 4px;
-}
-.prop-value {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-primary, #888);
-}
-
-/* ── 側欄：結構圖 ─────────────────────────────── */
-.structure-box {
-    background: var(--color-bg-secondary, #f7f7f7);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 180px;
-    padding: 1rem;
-}
-.structure-img {
-    max-width: 100%;
-    max-height: 180px;
-    object-fit: contain;
-}
-.structure-caption {
-    font-size: 12px;
-    color: var(--color-text-secondary, #888);
-    text-align: center;
-    margin-top: 8px;
-}
-
-/* ── 外部連結清單 ────────────────────────────── */
-.ext-link-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.ext-link-list li {
-    padding: 9px 0;
-    border-bottom: 0.5px solid var(--color-border, #f0f0f0);
-}
-.ext-link-list li:last-child { border-bottom: none; }
-.ext-link-list a {
-    font-size: 13px;
-    color: var(--color-link, #185FA5);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-.ext-link-list a:hover { text-decoration: underline; }
-.ext-source {
-    font-size: 11px;
-    color: var(--color-text-secondary, #999);
-    font-weight: 500;
-    flex-shrink: 0;
-}
-
-/* ── 相關代謝物標籤 ──────────────────────────── */
-.metabolite-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-.chip {
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--color-bg-secondary, #f5f5f5);
-    border: 0.5px solid var(--color-border, #e0e0e0);
-    color: var(--color-text-primary, #111);
-    text-decoration: none;
-    transition: background 0.12s;
-    white-space: nowrap;
-}
-.chip:hover {
-    background: #fff;
-    border-color: #aaa;
-}
-
-/* ── 計數徽章 ────────────────────────────────── */
-.count-badge {
-    font-size: 11px;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--color-bg-primary, #fff);
-    border: 0.5px solid var(--color-border, #e0e0e0);
-    color: var(--color-text-secondary, #888);
-}
-
-/* ── 無資料提示 ──────────────────────────────── */
-.no-data {
-    font-size: 13px;
-    color: var(--color-text-secondary, #999);
-}
-
-/* ── 警告訊息 ────────────────────────────────── */
-.alert-danger {
-    background: #FCEBEB;
-    color: #791F1F;
-    border: 0.5px solid #F09595;
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 14px;
-    margin: 1.5rem 0;
-}
-
-.structure-box.synonym-scroll {
-    max-height: 140px;
-    overflow-y: auto;
-    background: #fafbfc;
-    border: 1px solid #d0d7de;
-    border-radius: 0.5em;
-    padding: 0.6em 0.8em;
-    box-sizing: border-box;
-    font-size: 0.95em;
-    line-height: 1.6;
-    word-break: break-all;
-}
-
-.expression-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    max-width: 320px;
-}
-
-.expression-tag {
-    display: inline-block;
-    background: #eaf3fb;
-    color: #1a5a8a;
-    border: 1px solid #b3d4ec;
-    border-radius: 12px;
-    padding: 2px 9px;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    line-height: 1.5;
-}
-
-/* ── 主容器留白 ──────────────────────────────── */
-.main-container {
-    padding: 1.5rem 1.25rem;
-}
-    </style>
+    <link rel="stylesheet" href="../../css/metabolite.css">
 </head>
 <body>
 
@@ -438,7 +231,11 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
 <div class="main-container">
 
     <!-- ── Back to Browse 按鈕 ────────────────── -->
-    <a href="<?= htmlspecialchars($backUrl) ?>" class="btn-back">← Back to Browse</a>
+    <?php if ($fromClinical && $fromPatient !== ''): ?>
+        <a href="/clinicaldata/<?= urlencode($fromPatient) ?>/?back=<?= urlencode($backUrl) ?>" class="btn-back">← Back to <?= htmlspecialchars($fromPatient) ?></a>
+    <?php else: ?>
+        <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn-back">← Previous page</a>
+    <?php endif; ?>
 
     <!-- ── 頁面標題列 ──────────────────────────── -->
     <div class="page-header">
@@ -451,8 +248,11 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
     <!-- ── Tab 導覽列 ─────────────────────────── -->
     <nav class="nav-tabs" id="metab-tabs">
         <button class="tab active" data-target="sec-identification">Identification</button>
+        <button class="tab"        data-target="sec-prognosis">Prognosis</button>
         <button class="tab"        data-target="sec-physical">Metabolite Information</button>
+        <button class="tab"        data-target="sec-synonyms">Synonyms</button>
         <button class="tab"        data-target="sec-links">External Links</button>
+        <button class="tab"        data-target="sec-pathway">Pathway</button>
     </nav>
 
     <!-- ── 主體雙欄 ────────────────────────────── -->
@@ -478,6 +278,22 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
                             </td>
                         </tr>
                         <?php endif; ?>
+
+                        <tr>
+                            <td>Molecular Subtypes</td> 
+                            <td>
+                                <?php if (!empty($molecularSubtypeData)): ?>
+                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info): ?>
+                                        <span class="expression-tag" title="Subtype specificity index: <?= htmlspecialchars($info['index']) ?>">
+                                            <?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($info['subtype']) ?>
+                                        </span><br>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+
                         <tr><td>IUPAC name</td>       <td>1,1'-biphenyl</td></tr>
                         <tr><td>SMILES</td>           <td>C1=CC=C(C=C1)C1=CC=CC=C1</td></tr>
                         <tr><td>InChI Identifier</td> <td>InChI=1S/C12H10/c1-3-7-11(8-4-1)12-9-5-2-6-10-12/h1-10H</td></tr>
@@ -487,31 +303,53 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
                 </div>
             </section>
 
+            <!-- Prognosis Information -->
+            <section id="sec-prognosis" class="section-block">
+                <div class="section-header">Prognosis Information</div>
+                <div class="section-content">
+                    <table class="info-table">
+                        <tr>
+                            <td>OS Hazard Ratio</td>
+                            <td><?= render_hazard_ratio_tags($hazardRatioData, 'os', $dmtdbId) ?></td>
+                        </tr>
+                        <tr>
+                            <td>PFS Hazard Ratio</td>
+                            <td><?= render_hazard_ratio_tags($hazardRatioData, 'pfs', $dmtdbId) ?></td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+
             <!-- Metabolite Information -->
             <section id="sec-physical" class="section-block">
                 <div class="section-header">Information</div>
                 <div class="section-content">
                     <div class="property-grid">
-                        <div class="prop-card"><div class="prop-label">代謝物作用</div>             <div class="prop-value">當聯苯進入生物體（如哺乳動物或微生物）時，會經歷一系列的生物轉化（Biotransformation），產生的主要代謝物包括：<br>1. 羥基化反應 (Hydroxylation)： 這是最主要的代謝途徑。聯苯會被細胞色素 P450 酶（CYP450）氧化，生成：4-羥基聯苯 (4-Hydroxybiphenyl)：最主要的產物2-羥基聯苯 (2-Hydroxybiphenyl)2,5-二羥基聯苯 或其他多羥基衍生物<br>2. 結合反應 (Conjugation)： 為了增加水溶性以利排出，這些羥基化產物會進一步與葡萄糖醛酸或硫酸鹽結合</div></div>
-                        <div class="prop-card"><div class="prop-label">用途</div>                  <div class="prop-value">1. 酶活性指標：聯苯的羥基化速率常用來評估肝微粒體中 CYP450 酶家族的活性<br>2. 毒理學研究：研究聯苯代謝過程中產生的活性中間體（如環氧化物），了解其對細胞 DNA 或蛋白質的損傷機制<br>3. 微生物降解：在環境代謝組學中，研究細菌如何利用聯苯作為碳源，這對於生物修復（Bioremediation）技術至關重要</div></div>
+                        <div class="prop-card"><div class="prop-label">代謝物作用</div>             <div class="prop-value">當聯苯進入生物體（如哺乳動物或微生物）時，會經歷一系列的生物轉化（Biotransformation），產生的主要代謝物包括：
+                                                                                                                        <br>1. 羥基化反應 (Hydroxylation)： 這是最主要的代謝途徑。聯苯會被細胞色素 P450 酶（CYP450）氧化，生成：4-羥基聯苯 (4-Hydroxybiphenyl)：最主要的產物2-羥基聯苯 (2-Hydroxybiphenyl)2,5-二羥基聯苯 或其他多羥基衍生物
+                                                                                                                        <br>2. 結合反應 (Conjugation)： 為了增加水溶性以利排出，這些羥基化產物會進一步與葡萄糖醛酸或硫酸鹽結合</div></div>
+                        <div class="prop-card"><div class="prop-label">用途</div>                  <div class="prop-value">1. 酶活性指標：聯苯的羥基化速率常用來評估肝微粒體中 CYP450 酶家族的活性
+                                                                                                                      <br>2. 毒理學研究：研究聯苯代謝過程中產生的活性中間體（如環氧化物），了解其對細胞 DNA 或蛋白質的損傷機制
+                                                                                                                      <br>3. 微生物降解：在環境代謝組學中，研究細菌如何利用聯苯作為碳源，這對於生物修復（Bioremediation）技術至關重要</div></div>
                         <div class="prop-card"><div class="prop-label">濃度意義</div>               <div class="prop-value">在人體樣本中發現高濃度的聯苯代謝物，通常暗示著環境暴露或食物污染</div></div>
                         <div class="prop-card"><div class="prop-label">對Glioma的影響-詳細</div>     <div class="prop-value">1. 潛在的致癌風險（化學誘導）：聯苯及其衍生物（如多氯聯苯 PCBs）被認為具有神經毒性與致癌潛力
-    a. 氧化壓力與炎症： 研究指出，聯苯類的代謝產物可能誘導膠質細胞產生過量的反應性氧族（ROS），導致氧化壓力。
-                                         這種長期的慢性炎症環境是促進神經膠質細胞惡化為膠質瘤的誘因之一。
-    b. 干擾信號傳導： 某些聯苯類化合物被懷疑會干擾星狀細胞（Astrocytes）的正常功能，進而影響腦部的代謝平衡。
-2. 藥物設計中的「聯苯骨架」（關鍵影響）：科學家利用聯苯的疏水性與結構剛性，開發能穿過血腦屏障（BBB）的抗癌藥物。
-    a. 抑制腫瘤細胞的遷移與侵襲
-        MMP 抑制劑： 許多針對膠質瘤的基質金屬蛋白酶(MMPs)抑制劑都包含聯苯羧酸(Biphenyl carboxylic acid)結構。
-    b. 誘導細胞凋亡（Apoptosis）
-        聯苯脲類衍生物： 研究發現，某些含聯苯結構的化合物能靶向膠質瘤細胞中的特定激酶（如 PI3K/Akt/mTOR 路徑），
-                        啟動細胞凋亡程序，選擇性地殺死腫瘤細胞，而對正常神經細胞傷害較小。
-    c. 放射增敏作用
-        部分研究嘗試將聯苯衍生物作為放射增敏劑，增強放療對神經膠質瘤細胞的殺傷力。
-3. 代謝組學觀點
-    在膠質瘤患者的代謝輪廓（Metabolic Profiling）中，偵測到異常的聯苯類化合物，通常具有以下臨床意義：
-        1. 環境暴露追蹤： 評估患者是否長期暴露於工業化學品環境。
-        2. 藥物代謝監測： 監測其代謝產物（如 4-羥基聯苯）的濃度有助於調整藥物劑量與評估毒性。</div></div>
-                        <div class="prop-card"><div class="prop-label">對Glioma的影響-簡單</div>      <div class="prop-value">1. 環境暴露：負面/致癌 -> 誘導氧化壓力、促進細胞癌變<br>2. 藥物開發：正面/治療 -> 作為 MMPs 抑制劑或激酶抑制劑的骨架，抑制侵襲<br>3. 生物學研究：中性 -> 作為研究血腦屏障通透性的模型分子</div></div>
+                                                                                                                            <li>a. 氧化壓力與炎症： 研究指出，聯苯類的代謝產物可能誘導膠質細胞產生過量的反應性氧族（ROS），導致氧化壓力。這種長期的慢性炎症環境是促進神經膠質細胞惡化為膠質瘤的誘因之一。</li>
+                                                                                                                            <li>b. 干擾信號傳導： 某些聯苯類化合物被懷疑會干擾星狀細胞（Astrocytes）的正常功能，進而影響腦部的代謝平衡。</li>
+                                                                                                                        <br>2. 藥物設計中的「聯苯骨架」（關鍵影響）：科學家利用聯苯的疏水性與結構剛性，開發能穿過血腦屏障（BBB）的抗癌藥物。
+                                                                                                                            <li>a. 抑制腫瘤細胞的遷移與侵襲
+                                                                                                                                    MMP 抑制劑： 許多針對膠質瘤的基質金屬蛋白酶(MMPs)抑制劑都包含聯苯羧酸(Biphenyl carboxylic acid)結構。</li>
+                                                                                                                            <li>b. 誘導細胞凋亡（Apoptosis）
+                                                                                                                                    聯苯脲類衍生物： 研究發現，某些含聯苯結構的化合物能靶向膠質瘤細胞中的特定激酶（如 PI3K/Akt/mTOR 路徑），
+                                                                                                                                                    啟動細胞凋亡程序，選擇性地殺死腫瘤細胞，而對正常神經細胞傷害較小。</li>
+                                                                                                                            <li>c. 放射增敏作用
+                                                                                                                                    部分研究嘗試將聯苯衍生物作為放射增敏劑，增強放療對神經膠質瘤細胞的殺傷力。</li>
+                                                                                                                        <br>3. 代謝組學觀點
+                                                                                                                        在膠質瘤患者的代謝輪廓（Metabolic Profiling）中，偵測到異常的聯苯類化合物，通常具有以下臨床意義：
+                                                                                                                            <li>1. 環境暴露追蹤： 評估患者是否長期暴露於工業化學品環境。</li>
+                                                                                                                            <li>2. 藥物代謝監測： 監測其代謝產物（如 4-羥基聯苯）的濃度有助於調整藥物劑量與評估毒性。</li></div></div>
+                        <div class="prop-card"><div class="prop-label">對Glioma的影響-簡單</div>      <div class="prop-value">1. 環境暴露：負面/致癌 -> 誘導氧化壓力、促進細胞癌變
+                                                                                                                        <br>2. 藥物開發：正面/治療 -> 作為 MMPs 抑制劑或激酶抑制劑的骨架，抑制侵襲
+                                                                                                                        <br>3. 生物學研究：中性 -> 作為研究血腦屏障通透性的模型分子</div></div>
                         <div class="prop-card"><div class="prop-label">來源</div>                   <div class="prop-value">外源性化合物</div></div>
                     </div>
                 </div>
@@ -526,14 +364,18 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
             <div class="section-block">
                 <div class="section-header">Synonyms</div>
                 <div class="section-content">
-                    <?php if (empty($synonyms)): ?>
-                        <div class="structure-box structure-placeholder">
-                            <span class="no-data">Synonyms not available</span>
+                    <?php if (!empty($synonyms)): ?>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e0e0e0; padding: 10px; border-radius: 4px; background-color: #fff;">
+                            <ul style="list-style: none; padding-left: 0; margin: 0;">
+                                <?php foreach ($synonyms as $syn): ?>
+                                    <li style="margin-bottom: 6px; font-size: 14px; color: #333; line-height: 1.4; border-bottom: 1px dashed #f0f0f0; padding-bottom: 4px;">
+                                        <?= htmlspecialchars($syn) ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
                         </div>
                     <?php else: ?>
-                        <div class="structure-box synonym-scroll">
-                            <?= implode('<br>', array_map('htmlspecialchars', $synonyms)) ?>
-                        </div>
+                        <p style="color: #999;">-</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -555,6 +397,31 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </ul>
+                </div>
+            </section>
+
+            <!-- Pathway Information -->
+            <section id="sec-pathway" class="section-block">
+                <div class="section-header">Pathway</div>
+                <div class="section-content">
+                    <?php if (!empty($pathways) && !empty($linkRow['KEGG_ID'])): ?>
+                        <div class="metab-pathway-tags">
+                            <?php foreach ($pathways as $pw): 
+                                $keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' . 
+                                        htmlspecialchars($pw['pathway_id']) . 
+                                        '&multi_query=' . 
+                                        htmlspecialchars($linkRow['KEGG_ID']);
+                            ?>
+                                <span class="metab-pathway-tag">
+                                    <a href="<?= $keggUrl ?>" target="_blank" title="<?= htmlspecialchars($pw['pathway_id']) ?>">
+                                        <?= htmlspecialchars($pw['pathway_name'] ?? $pw['pathway_id']) ?>
+                                    </a>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="no-data">-</p>
+                    <?php endif; ?>
                 </div>
             </section>
 
@@ -593,6 +460,22 @@ if (!empty($_SERVER['HTTP_REFERER'])) {
         sections.forEach(function (s) { observer.observe(s); });
     }
 }());
+function toggleHazardRatios(uid, btn) {
+    const tags = document.querySelectorAll('.hazard-ratio-tag[data-group="' + uid + '"]');
+    const hidden = [...tags].filter(t => t.style.display === 'none');
+    if (hidden.length > 0) {
+        hidden.forEach(t => t.style.display = '');
+        btn.textContent = 'Show less';
+    } else {
+        let count = 0;
+        tags.forEach(t => {
+            count++;
+            if (count > 3) t.style.display = 'none';
+        });
+        const extra = tags.length - 3;
+        btn.textContent = '+' + extra + ' more';
+    }
+}
 </script>
 </body>
 </html>

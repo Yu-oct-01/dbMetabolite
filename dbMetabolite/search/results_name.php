@@ -80,7 +80,7 @@ if (!empty($_GET['keyword']) && !empty($_GET['search_field'])) {
                     mi.HMDB_ID,
                     MAX(hs.metabolite_name)                                                    AS hmdb_name,
                     MAX(CASE WHEN hs.metabolite_name LIKE :kw THEN 1 ELSE 0 END)              AS name_match,
-                    GROUP_CONCAT(DISTINCT hs.synonyms ORDER BY hs.synonyms SEPARATOR ' | ')   AS all_synonyms,
+                    -- GROUP_CONCAT(DISTINCT hs.synonyms ORDER BY hs.synonyms SEPARATOR ' | ')   AS all_synonyms,
                     GROUP_CONCAT(DISTINCT CASE
                         WHEN hs.synonyms LIKE :kw THEN hs.synonyms
                         ELSE NULL
@@ -149,6 +149,7 @@ function pageUrl(int $p): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results — Metabolite Database</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/search.css">
 </head>
 <body>
 
@@ -194,8 +195,8 @@ function pageUrl(int $p): string {
                     <?php foreach ($results as $row): ?>
                         <tr>
                             <td>
-                                <a href="metabolite/<?= urlencode(strtolower($row['DMTDB_ID'])) ?>/">
-                                    <?= htmlspecialchars($row['DMTDB_ID']) ?>
+                                <a href="/metabolite/<?php echo strtolower($row['DMTDB_ID']); ?>/">
+                                    <?php echo htmlspecialchars($row['DMTDB_ID']); ?>
                                 </a>
                             </td>
                             <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
@@ -214,7 +215,8 @@ function pageUrl(int $p): string {
                                 <td>
                                 <?php
                                 if (!empty($row['name_match']) && $row['name_match'] == 1) {
-                                    echo htmlspecialchars($row['all_synonyms'] ?? '-');
+                                    // 改用 $row['metabolite_name'] 替代 $keyword
+                                    echo htmlspecialchars($row['metabolite_name'] . ' is a common name');
                                 } elseif (!empty($row['matched_synonyms'])) {
                                     echo htmlspecialchars($row['matched_synonyms']);
                                 } else {

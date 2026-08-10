@@ -14,6 +14,7 @@ ini_set('display_errors', 1);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metabolite Database - Search by Tumor Microenvironment</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/search.css">
 </head>
 <body>
 

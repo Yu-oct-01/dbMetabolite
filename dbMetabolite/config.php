@@ -2,8 +2,9 @@
 define("BASE_PATH", __DIR__ . "/");
 define("PER_PAGE", 20);
 $host   = "127.0.0.1";
+$port   = "3306";
 $user   = "root";
-$pass   = "88888888";
+$pass   = "";
 $dbname = "metabolites";
 function getDB(): PDO {
     global $host, $user, $pass, $dbname;
