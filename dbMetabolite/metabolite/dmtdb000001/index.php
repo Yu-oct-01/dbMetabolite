@@ -1,4 +1,8 @@
 <?php
+// [AUTO-GENERATED-FROM-TEMPLATE] 此頁面由 generate_metabolite_pages.py 自動產生自共用模板；
+// 範本更新後重新執行批次模式（--update-existing）會被覆蓋更新。
+// 若要個別客製化此頁面，請改用單筆模式（--id/--file），
+// 該模式產生的頁面不含此標記，未來批次更新不會覆蓋它。
 // =============================================
 // metabolite/[DMTDB_ID]/index.php  —  代謝物個別頁面
 // =============================================
@@ -53,33 +57,44 @@ foreach ($expressionTables as $pdc => $eTbl) {
 }
 if ($metaboliteName === '') $metaboliteName = $dmtdbId;
 
-// ── 取得 Molecular Subtypes ─────────────────────────────────
-$molecularSubtypeData = []; // 用來儲存格式：['PDC000546' => ['subtype' => '...', 'index' => '...']]
+// ── 取得 Molecular Subtypes ───
+$molecularSubtypeData = []; // ['PDC000546' => ['subtype'=>..,'ssi'=>..,'PRONEURAL'=>..,'CLASSICAL'=>..,'MESENCHYMAL'=>..]]
 $molecularTables = [
     'PDC000546' => 'cptac3_pdc000546_metabolite_molecular',
     'PDC000552' => 'cptac3_pdc000552_metabolite_molecular',
 ];
 foreach ($molecularTables as $pdc => $mTbl) {
-    // 同時選取 MAX_concentration_subtype 與 Subtype_specificity_index
-    $q = $db->prepare("SELECT MAX_concentration_subtype, Subtype_specificity_index FROM `$mTbl` WHERE `DMTDB_ID` = ? LIMIT 1");
+    $q = $db->prepare(
+        "SELECT `PRONEURAL`, `CLASSICAL`, `MESENCHYMAL`,
+                `MAX_concentration_subtype`, `Subtype_specificity_index`
+         FROM `$mTbl`
+         WHERE `DMTDB_ID` = ? LIMIT 1"
+    );
     $q->execute([$dmtdbId]);
     $row = $q->fetch(PDO::FETCH_ASSOC);
-    if ($row && !empty($row['MAX_concentration_subtype'])) {
+    if ($row) {
         $molecularSubtypeData[$pdc] = [
-            'subtype' => $row['MAX_concentration_subtype'],
-            'index'   => isset($row['Subtype_specificity_index']) ? $row['Subtype_specificity_index'] : '-'
+            'subtype'     => $row['MAX_concentration_subtype'],
+            'ssi'         => $row['Subtype_specificity_index'],
+            'PRONEURAL'   => $row['PRONEURAL'],
+            'CLASSICAL'   => $row['CLASSICAL'],
+            'MESENCHYMAL' => $row['MESENCHYMAL'],
         ];
     }
 }
 
-// ── 取得 Hazard Ratio (Prognosis Information) ────────────────
-$hazardRatioData = [];
+// ── 取得 Prognosis / Hazard Ratio ──
+$hazardRatioData = []; // ['PDC000546' => ['os_hazard_ratio'=>.., 'os_p_value'=>.., 'pfs_hazard_ratio'=>.., 'pfs_p_value'=>..]]
 $hazardRatioTables = [
     'PDC000546' => 'cptac3_pdc000546_hazard_ratio_max',
     'PDC000552' => 'cptac3_pdc000552_hazard_ratio_max',
 ];
 foreach ($hazardRatioTables as $pdc => $hTbl) {
-    $q = $db->prepare("SELECT hazard_ratio_OS, hazard_ratio_PFS, OS_p_value, PFS_p_value FROM `$hTbl` WHERE `DMTDB_ID` = ? LIMIT 1");
+    $q = $db->prepare(
+        "SELECT `hazard_ratio_OS`, `hazard_ratio_PFS`, `OS_p_value`, `PFS_p_value`
+         FROM `$hTbl`
+         WHERE `DMTDB_ID` = ? LIMIT 1"
+    );
     $q->execute([$dmtdbId]);
     $row = $q->fetch(PDO::FETCH_ASSOC);
     if ($row) {
@@ -92,45 +107,6 @@ foreach ($hazardRatioTables as $pdc => $hTbl) {
             $hazardRatioData[$pdc]['pfs_p_value']      = $row['PFS_p_value'] ?? null;
         }
     }
-}
-
-// 產生單一 HR 分類標籤的小工具函式（複製自 metabolites.php 的邏輯）
-function render_hazard_ratio_tags(array $hazardRatioData, string $type, string $dmtdbId): string {
-    $uid = 'hr_' . $type . '_' . htmlspecialchars($dmtdbId);
-    $tagCount = 0;
-    $html = '';
-    foreach ($hazardRatioData as $pdcLabel => $vals) {
-        $valKey = $type . '_hazard_ratio';
-        $pKey   = $type . '_p_value';
-        if (!isset($vals[$valKey])) continue;
-
-        $tagCount++;
-        $val    = $vals[$valKey];
-        $pValue = $vals[$pKey] ?? null;
-
-        $className = 'non-significant';
-        if ($pValue !== null && $pValue < 0.05) {
-            if ($val > 1)      $className = 'risk-factor';
-            elseif ($val < 1)  $className = 'protective-factor';
-        }
-        $labelText = $className === 'risk-factor' ? 'Risk Factor'
-                    : ($className === 'protective-factor' ? 'Protective Factor' : 'Non-significant');
-        $hrTitle = 'HR=' . (($val !== null) ? $val : 'N/A') . ', p=' . (($pValue !== null) ? $pValue : 'N/A');
-        $hidden  = ($tagCount > 3) ? ' style="display:none;"' : '';
-
-        $html .= '<span class="hazard-ratio-tag ' . $className . '"' . $hidden
-               . ' data-group="' . $uid . '" title="' . htmlspecialchars($hrTitle) . '">'
-               . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($labelText) . '</span>';
-    }
-    if ($tagCount === 0) return '-';
-
-    $out = '<div class="hazard-ratio-tags">' . $html;
-    if ($tagCount > 3) {
-        $extra = $tagCount - 3;
-        $out .= '<span class="hazard-ratio-more" onclick="toggleHazardRatios(\'' . $uid . '\', this)">+' . $extra . ' more</span>';
-    }
-    $out .= '</div>';
-    return $out;
 }
 
 // ── 取得 external links（從 metabolites_id 取得）──────────
@@ -223,6 +199,8 @@ if (!empty($_GET['back'])) {
     <title>Metabolite Database — <?= htmlspecialchars($metaboliteName) ?></title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/metabolite.css">
+    <link rel="stylesheet" href="../../css/pathway.css">
+    <link rel="stylesheet" href="../../css/hazard_ratio.css">
 </head>
 <body>
 
@@ -248,8 +226,9 @@ if (!empty($_GET['back'])) {
     <!-- ── Tab 導覽列 ─────────────────────────── -->
     <nav class="nav-tabs" id="metab-tabs">
         <button class="tab active" data-target="sec-identification">Identification</button>
+        <button class="tab"        data-target="sec-molecular">Molecular Subtypes</button>
         <button class="tab"        data-target="sec-prognosis">Prognosis</button>
-        <button class="tab"        data-target="sec-physical">Metabolite Information</button>
+        <button class="tab"        data-target="sec-metabolite">Metabolite Information</button>
         <button class="tab"        data-target="sec-synonyms">Synonyms</button>
         <button class="tab"        data-target="sec-links">External Links</button>
         <button class="tab"        data-target="sec-pathway">Pathway</button>
@@ -278,27 +257,89 @@ if (!empty($_GET['back'])) {
                             </td>
                         </tr>
                         <?php endif; ?>
-
-                        <tr>
-                            <td>Molecular Subtypes</td> 
-                            <td>
-                                <?php if (!empty($molecularSubtypeData)): ?>
-                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info): ?>
-                                        <span class="expression-tag" title="Subtype specificity index: <?= htmlspecialchars($info['index']) ?>">
-                                            <?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($info['subtype']) ?>
-                                        </span><br>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    -
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-
                         <tr><td>IUPAC name</td>       <td>1,1'-biphenyl</td></tr>
                         <tr><td>SMILES</td>           <td>C1=CC=C(C=C1)C1=CC=CC=C1</td></tr>
                         <tr><td>InChI Identifier</td> <td>InChI=1S/C12H10/c1-3-7-11(8-4-1)12-9-5-2-6-10-12/h1-10H</td></tr>
                         <tr><td>InChIKey</td>         <td>ZUOUZKKEUPVFJK-UHFFFAOYSA-N</td></tr>
                         <tr><td>Description</td>      <td>聯苯是一種由兩個苯環通過單鍵連接而成的芳香烴。<br>來源： 常見於防腐劑(如柑橘類水果的防黴劑)、染料中間體，以及多氯聯苯(PCBs)降解後的殘留物。</td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Molecular Subtypes -->
+            <section id="sec-molecular" class="section-block">
+                <div class="section-header">Molecular Subtypes</div>
+                <div class="section-content">
+                    <table class="info-table">
+                        <tr>
+                            <td>Proneural Expression</td>
+                            <td>
+                                <?php if (empty($molecularSubtypeData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="pathway-tags">
+                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
+                                        $val = $info['PRONEURAL'] ?? null;
+                                        $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
+                                    ?>
+                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Classical Expression</td>
+                            <td>
+                                <?php if (empty($molecularSubtypeData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="pathway-tags">
+                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
+                                        $val = $info['CLASSICAL'] ?? null;
+                                        $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
+                                    ?>
+                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Mesenchymal Expression</td>
+                            <td>
+                                <?php if (empty($molecularSubtypeData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="pathway-tags">
+                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
+                                        $val = $info['MESENCHYMAL'] ?? null;
+                                        $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
+                                    ?>
+                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Maximum Expression in Molecular Subtypes</td>
+                            <td>
+                                <?php if (empty($molecularSubtypeData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="pathway-tags">
+                                    <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
+                                        $subtype = $info['subtype'] ?? 'N/A';
+                                        $ssi     = $info['ssi'];
+                                        $ssiText = ($ssi !== null) ? number_format((float)$ssi, 2) : 'N/A';
+                                    ?>
+                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($subtype) ?>(<?= htmlspecialchars($ssiText) ?>)</span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     </table>
                 </div>
             </section>
@@ -310,18 +351,66 @@ if (!empty($_GET['back'])) {
                     <table class="info-table">
                         <tr>
                             <td>OS Hazard Ratio</td>
-                            <td><?= render_hazard_ratio_tags($hazardRatioData, 'os', $dmtdbId) ?></td>
+                            <td>
+                                <?php if (empty($hazardRatioData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="hazard-ratio-tags">
+                                    <?php foreach ($hazardRatioData as $pdcLabel => $vals):
+                                        $val    = $vals['os_hazard_ratio'] ?? null;
+                                        $pValue = $vals['os_p_value'] ?? null;
+
+                                        $className = 'non-significant';
+                                        if ($pValue !== null && $pValue < 0.05) {
+                                            if ($val > 1)      $className = 'risk-factor';
+                                            elseif ($val < 1)  $className = 'protective-factor';
+                                        }
+                                        $labelText = $className === 'risk-factor' ? 'Risk Factor'
+                                                : ($className === 'protective-factor' ? 'Protective Factor' : 'Non-significant');
+                                        $hrTitle = 'HR=' . (($val !== null) ? $val : 'N/A') . ', p=' . (($pValue !== null) ? $pValue : 'N/A');
+                                    ?>
+                                        <span class="hazard-ratio-tag <?= $className ?>" title="<?= htmlspecialchars($hrTitle) ?>">
+                                            <?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($labelText) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <tr>
                             <td>PFS Hazard Ratio</td>
-                            <td><?= render_hazard_ratio_tags($hazardRatioData, 'pfs', $dmtdbId) ?></td>
+                            <td>
+                                <?php if (empty($hazardRatioData)): ?>
+                                    -
+                                <?php else: ?>
+                                    <div class="hazard-ratio-tags">
+                                    <?php foreach ($hazardRatioData as $pdcLabel => $vals):
+                                        $val    = $vals['pfs_hazard_ratio'] ?? null;
+                                        $pValue = $vals['pfs_p_value'] ?? null;
+
+                                        $className = 'non-significant';
+                                        if ($pValue !== null && $pValue < 0.05) {
+                                            if ($val > 1)      $className = 'risk-factor';
+                                            elseif ($val < 1)  $className = 'protective-factor';
+                                        }
+                                        $labelText = $className === 'risk-factor' ? 'Risk Factor'
+                                                : ($className === 'protective-factor' ? 'Protective Factor' : 'Non-significant');
+                                        $hrTitle = 'HR=' . (($val !== null) ? $val : 'N/A') . ', p=' . (($pValue !== null) ? $pValue : 'N/A');
+                                    ?>
+                                        <span class="hazard-ratio-tag <?= $className ?>" title="<?= htmlspecialchars($hrTitle) ?>">
+                                            <?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($labelText) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     </table>
                 </div>
             </section>
 
             <!-- Metabolite Information -->
-            <section id="sec-physical" class="section-block">
+            <section id="sec-metabolite" class="section-block">
                 <div class="section-header">Information</div>
                 <div class="section-content">
                     <div class="property-grid">
@@ -460,22 +549,6 @@ if (!empty($_GET['back'])) {
         sections.forEach(function (s) { observer.observe(s); });
     }
 }());
-function toggleHazardRatios(uid, btn) {
-    const tags = document.querySelectorAll('.hazard-ratio-tag[data-group="' + uid + '"]');
-    const hidden = [...tags].filter(t => t.style.display === 'none');
-    if (hidden.length > 0) {
-        hidden.forEach(t => t.style.display = '');
-        btn.textContent = 'Show less';
-    } else {
-        let count = 0;
-        tags.forEach(t => {
-            count++;
-            if (count > 3) t.style.display = 'none';
-        });
-        const extra = tags.length - 3;
-        btn.textContent = '+' + extra + ' more';
-    }
-}
 </script>
 </body>
 </html>

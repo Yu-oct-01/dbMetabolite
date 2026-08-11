@@ -3,12 +3,18 @@ http://dbmetabolite.test/index.php
 
 dbMetabolite/
 ├──metabolite/
+│   ├── generate_metabolite_pages.py（生成代謝物個別頁面模板程式碼）
+│   ├── metabolite_ids.txt（生成代謝物個別頁面的 id 清單）
+│   ├── template.php（代謝物個別頁面模板）
 │   ├── dmtdb000001/
 │         ├──index.php
 │   ├── dmtdb000002/
 │         ├──index.php
 │   ˙˙˙˙˙
 ├──clinicaldata/
+│   ├── generate_clinicaldata_pages.py（生成病人個別頁面模板程式碼）
+│   ├── patient_ids.txt（生成病人個別頁面的 id 清單）
+│   ├── template.php（病人個別頁面模板）
 │   ├── C1230738/
 │         ├──index.php
 │   ├── C1245129/

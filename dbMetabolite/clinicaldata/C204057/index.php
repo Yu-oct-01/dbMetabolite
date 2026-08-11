@@ -34,7 +34,7 @@ $tables = [
     'cptac3_pdc000552_clinicaldata',
 ];
 
-// 要顯示的欄位群組（與 clinicaldata.php 一致）
+// 要顯示的欄位群組
 $fieldGroups = [
     'Basic Information' => [
         'Sex',
@@ -54,11 +54,35 @@ $fieldGroups = [
         'Progression or Recurrence',
         'Last Known Disease Status',
         'Days to Last Known Disease Status',
+        'Drug Resistance',
+
+        'OS Time',
+        'OS Status',
+        'PFS Time',
+        'PFS Status',
+    ],
+    'Stemness & Hypoxia Scores' => [
+        'BENPORATH_ES_1',
+        'BENPORATH_ES_2',
+        'WONG_EMBRYONIC_STEM_CELL_CORE',
+        'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM',
+        'Hallmark Hypoxia',
+    ],
+    'ESTIMATE Scores' => [
+        'Immune Score',
+        'Stroma Score',
+        'Microenvironment Score',
     ],
     'Exposure' => [
         'Alcohol Intensity',
     ],
     // Metabolites 由 expression 資料動態產生，不走 fieldGroups
+];
+$fieldMapping = [
+    'OS Time'          => 'OS_Time',           // 如果資料庫是這個名稱，就保持不變
+    'OS Status'        => 'OS_Status',
+    'PFS Time'         => 'PFS_Time',
+    'PFS Status'       => 'PFS_Status',
 ];
 
 $db  = getDB();
@@ -75,20 +99,16 @@ foreach ($tables as $tbl) {
     }
 }
 
-// ── Molecular Subtype 查詢 ──────────────────────────────────
-$molecularSubtype = null;
-
-$subtypeStmt = $db->prepare(
-    "SELECT `MolecularSubtype` 
-     FROM `gbm_molecular_subtypes` 
-     WHERE `Case ID` = ? 
-     LIMIT 1"
+// ── gbm_immune_data 查詢 ────────────────────────────────────
+$immuneRow = null;
+$immuneStmt = $db->prepare(
+    "SELECT * FROM `gbm_immune_data` WHERE `Case ID` = ? LIMIT 1"
 );
-$subtypeStmt->execute([$patientId]);
-$subtypeResult = $subtypeStmt->fetch(PDO::FETCH_ASSOC);
+$immuneStmt->execute([$patientId]);
+$immuneResult = $immuneStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($subtypeResult && isset($subtypeResult['MolecularSubtype'])) {
-    $molecularSubtype = $subtypeResult['MolecularSubtype'];
+if ($immuneResult) {
+    $immuneRow = $immuneResult;
 }
 
 // ── 代謝物表達量查詢 ──────────────────────────────────────────
@@ -188,11 +208,27 @@ function displayVal(?string $val): string {
                         <td><?= htmlspecialchars($field) ?></td>
                         <td>
                             <?php
-                            // 特殊處理 Molecular Subtype
-                            if ($field === 'Molecular Subtype') {
-                                echo displayVal($molecularSubtype);
+                            // 定義哪些欄位要從 gbm_immune_data 表中讀取，並對應到資料庫欄位名稱
+                            $immuneFieldsMapping = [
+                                'Molecular Subtype'                         => 'MolecularSubtype',
+                                'drug_resistance'                           => 'drug_resistance', // 如果你想擺在 Survival
+                                'Drug Resistance'                           => 'drug_resistance', // 相容原本表格寫法
+                                'BENPORATH_ES_1'                            => 'BENPORATH_ES_1',
+                                'BENPORATH_ES_2'                            => 'BENPORATH_ES_2',
+                                'WONG_EMBRYONIC_STEM_CELL_CORE'             => 'WONG_EMBRYONIC_STEM_CELL_CORE',
+                                'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM' => 'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM',
+                                'Hallmark Hypoxia'                          => 'HALLMARK_HYPOXIA', // 對應表格畫面的名稱
+                                'Immune Score'                              => 'immune score',
+                                'Stroma Score'                              => 'stroma score',
+                                'Microenvironment Score'                    => 'microenvironment score'
+                            ];
+
+                            if (array_key_exists($field, $immuneFieldsMapping)) {
+                                $dbCol = $immuneFieldsMapping[$field];
+                                echo displayVal($immuneRow[$dbCol] ?? null);
                             } else {
-                                echo displayVal($row[$field] ?? null);
+                                $dbColumnName = $fieldMapping[$field] ?? $field;
+                                echo displayVal($row[$dbColumnName] ?? null);
                             }
                             ?>
                         </td>

@@ -11,6 +11,7 @@ $allFields = [
     'diagnosis_age'                     => 'Age at Diagnosis',
 
     'disease_type'                      => 'Disease Type',
+    'molecular_subtype'                 => 'Molecular Subtype',
     'primary_site'                      => 'Primary Site',
     'site of resection or biopsy'       => 'Site of Resection or Biopsy',
 
@@ -20,6 +21,7 @@ $allFields = [
     'progression or recurrence'         => 'Progression or Recurrence',
     'last known disease status'         => 'Last Known Disease Status',
     'days to last known disease status' => 'Days to Last Known Disease Status',
+    'drug resistance'                   => 'Drug Resistance',
 
     'os_time'                           => 'OS Time',
     'os_state'                          => 'OS Status',
