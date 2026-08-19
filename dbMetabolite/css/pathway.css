@@ -102,9 +102,12 @@ a.kegg-link:hover {
 
 .pathway-tag {
     display: inline-block;
-    background: #eaf3fb;
+    /* background: #eaf3fb;
     color: #1a5a8a;
-    border: 1px solid #b3d4ec;
+    border: 1px solid #b3d4ec; */
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #bdbdbd;
     border-radius: 12px;
     padding: 2px 9px;
     font-size: 0.78rem;

@@ -26,6 +26,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <div class="dropdown-submenu">
                         <a class="dropdown-item" href="#">Glioma(GBM) »</a>
                         <div class="dropdown-menu sub-menu">
+                            <a class="dropdown-item" href="/analysis/Maximum_Expression.php">Maximum Expression</a>
                             <a class="dropdown-item" href="/analysis/GSVA_Scores.php">GSVA Scores</a>
                             <a class="dropdown-item" href="#">腫瘤幹性</a>
                             <a class="dropdown-item" href="#">其他項目</a>

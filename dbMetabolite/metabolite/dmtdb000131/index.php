@@ -278,12 +278,12 @@ if (!empty($_GET['back'])) {
                                 <?php if (empty($molecularSubtypeData)): ?>
                                     -
                                 <?php else: ?>
-                                    <div class="pathway-tags">
+                                    <div class="expression-tags">
                                     <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
                                         $val = $info['PRONEURAL'] ?? null;
                                         $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
                                     ?>
-                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                        <span class="expression-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
                                     <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -295,12 +295,12 @@ if (!empty($_GET['back'])) {
                                 <?php if (empty($molecularSubtypeData)): ?>
                                     -
                                 <?php else: ?>
-                                    <div class="pathway-tags">
+                                    <div class="expression-tags">
                                     <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
                                         $val = $info['CLASSICAL'] ?? null;
                                         $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
                                     ?>
-                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                        <span class="expression-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
                                     <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -312,12 +312,12 @@ if (!empty($_GET['back'])) {
                                 <?php if (empty($molecularSubtypeData)): ?>
                                     -
                                 <?php else: ?>
-                                    <div class="pathway-tags">
+                                    <div class="expression-tags">
                                     <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
                                         $val = $info['MESENCHYMAL'] ?? null;
                                         $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
                                     ?>
-                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
+                                        <span class="expression-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($formatted) ?></span>
                                     <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -329,13 +329,13 @@ if (!empty($_GET['back'])) {
                                 <?php if (empty($molecularSubtypeData)): ?>
                                     -
                                 <?php else: ?>
-                                    <div class="pathway-tags">
+                                    <div class="expression-tags">
                                     <?php foreach ($molecularSubtypeData as $pdcLabel => $info):
                                         $subtype = $info['subtype'] ?? 'N/A';
                                         $ssi     = $info['ssi'];
                                         $ssiText = ($ssi !== null) ? number_format((float)$ssi, 2) : 'N/A';
                                     ?>
-                                        <span class="pathway-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($subtype) ?>(<?= htmlspecialchars($ssiText) ?>)</span>
+                                        <span class="expression-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($subtype) ?>(<?= htmlspecialchars($ssiText) ?>)</span>
                                     <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>

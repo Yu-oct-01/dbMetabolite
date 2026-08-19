@@ -16,8 +16,6 @@ $allFields = [
     // 'MESENCHYMAL'        => 'Mesenchymal Expression',
     'molecular_subtypes' => 'Maximum Expression in Molecular Subtypes',
     'pathway'            => 'KEGG Pathway',
-    'correlated_pathway' => 'Pathways Correlation Coefficient',
-    'prognosis_correlated_pathway' => 'Prognosis-Associated Pathways',
     'os_hazard_ratio'  => 'OS Hazard Ratio',
     'pfs_hazard_ratio' => 'PFS Hazard Ratio'
 ];
@@ -41,6 +39,16 @@ $existingCols = [
     'pubchem_id' => 'Pubchem_ID',
     'kegg_id'    => 'KEGG_ID',
 ];
+
+// 對應表達量分級
+function expressionTertileLabel(int $tertile): array {
+    return match ($tertile) {
+        1 => ['label' => 'low expression', 'class' => 'expression-low'],
+        2 => ['label' => 'medium expression', 'class' => 'expression-mid'],
+        3 => ['label' => 'high expression', 'class' => 'expression-high'],
+        default => ['label' => 'N/A', 'class' => ''],
+    };
+}
 
 // Maximum Expression 來源資料表（PDC dataset name => table name）
 $expressionTables = [
@@ -260,14 +268,18 @@ if (!empty($_GET['diseases'])) {
 
             foreach ($targetTables as $pdcLabel => $tblName) {
                 $stmt = $db->prepare(
-                    "SELECT `DMTDB_ID`, `average_expression`
-                     FROM `$tblName`
-                     WHERE `DMTDB_ID` IN ($placeholders)"
+                    "SELECT DMTDB_ID, average_expression, tertile
+                    FROM (
+                        SELECT DMTDB_ID, average_expression,
+                                NTILE(3) OVER (ORDER BY average_expression) AS tertile
+                        FROM `$tblName`
+                        WHERE average_expression IS NOT NULL
+                    ) t
+                    WHERE DMTDB_ID IN ($placeholders)"
                 );
                 $stmt->execute(array_values($dmtdbIds));
                 while ($eRow = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $expressionMap[$eRow['DMTDB_ID']][$pdcLabel] = $eRow['average_expression'];
-                }
+                    $expressionMap[$eRow['DMTDB_ID']][$pdcLabel] = (int)$eRow['tertile'];                }
             }
         }
         // ─────────────────────────────────────────────────────────────
@@ -323,6 +335,7 @@ function pageUrl(int $p): string {
     <title>Metabolite Database - Browse</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/browse.css">
+    <link rel="stylesheet" href="css/expression.css">
     <link rel="stylesheet" href="css/pathway.css">
     <link rel="stylesheet" href="css/hazard_ratio.css">
 </head>
@@ -417,7 +430,57 @@ function pageUrl(int $p): string {
                         <th>Metabolite ID</th>
                         <th>Metabolite Name</th>
                         <?php foreach ($selectedFields as $f): ?>
-                            <th><?= htmlspecialchars($allFields[$f]) ?></th>
+                            <th>
+                                <?php if ($f === 'max_expression'): ?>
+                                    <div class="tooltip-container">
+                                        <span class="info-icon">i</span>
+                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <div class="tooltip-box tooltip-box-wide">
+                                            <strong>Expression Info:</strong><br>
+                                            Expression for each sample are detailed in metabolite pages.
+                                        </div>
+                                    </div>
+                                <?php elseif ($f === 'molecular_subtypes'): ?>
+                                    <div class="tooltip-container">
+                                        <span class="info-icon">i</span>
+                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <div class="tooltip-box tooltip-box-wide">
+                                            <strong>Molecular Subtypes Info:</strong><br>
+                                            Expression levels for each subtype are detailed in metabolite pages.
+                                        </div>
+                                    </div>
+                                <?php elseif ($f === 'pathway'): ?>
+                                    <div class="tooltip-container">
+                                        <span class="info-icon">i</span>
+                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <div class="tooltip-box tooltip-box-wide">
+                                            <strong>Pathway Info:</strong><br>
+                                            <!-- <span style="color: #f87171;">■ Red tag</span>: Positively Correlated ($r > 0)<br>
+                                            <span style="color: #60a5fa;">■ Blue tag</span>: Negatively Correlated ($r < 0) -->
+                                        </div>
+                                    </div>
+                                <?php elseif ($f === 'os_hazard_ratio'): ?>
+                                    <div class="tooltip-container">
+                                        <span class="info-icon">i</span>
+                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <div class="tooltip-box tooltip-box-wide">
+                                            <strong>OS Hazard Ratio Info:</strong><br>
+                                            Tap to view HR、p-value for each sample.                                        
+                                        </div>
+                                    </div>
+                                <?php elseif ($f === 'pfs_hazard_ratio'): ?>
+                                    <div class="tooltip-container">
+                                        <span class="info-icon">i</span>
+                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <div class="tooltip-box tooltip-box-wide">
+                                            <strong>PFS Hazard Ratio Info:</strong><br>
+                                            Tap to view HR、p-value for each sample.
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($allFields[$f]) ?>
+                                <?php endif; ?>
+                            </th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
@@ -477,51 +540,83 @@ function pageUrl(int $p): string {
                                 if (empty($expData)) {
                                     echo '-';
                                 } else {
-                                    echo '<div class="pathway-tags">';
-                                    foreach ($expData as $pdcLabel => $expVal) {
-                                        $formatted = ($expVal !== null) ? number_format((float)$expVal, 2) : 'N/A';
-                                        echo '<span class="pathway-tag">'
-                                           . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($formatted)
-                                           . '</span>';
+                                    echo '<div class="expression-tags">';
+                                    foreach ($expData as $pdcLabel => $tertile) {
+                                        $info = expressionTertileLabel((int)$tertile);
+                                        echo '<span class="expression-tag ' . $info['class'] . '">'
+                                        . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($info['label'])
+                                        . '</span>';
                                     }
                                     echo '</div>';
                                 }
 
-                            // ── Proneural / Classical / Mesenchymal Expression 欄位
-                            } elseif ($f === 'PRONEURAL' || $f === 'CLASSICAL' || $f === 'MESENCHYMAL') {
-                                $dmtId   = $row['DMTDB_ID'];
-                                $subData = $molecularSubtypeMap[$dmtId] ?? [];
-                                if (empty($subData)) {
-                                    echo '-';
-                                } else {
-                                    echo '<div class="pathway-tags">';
-                                    foreach ($subData as $pdcLabel => $info) {
-                                        $val = $info[$f] ?? null;
-                                        $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
-                                        echo '<span class="pathway-tag">'
-                                           . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($formatted)
-                                           . '</span>';
-                                    }
-                                    echo '</div>';
-                                }
+                            // // ── Proneural / Classical / Mesenchymal Expression 欄位
+                            // } elseif ($f === 'PRONEURAL' || $f === 'CLASSICAL' || $f === 'MESENCHYMAL') {
+                            //     $dmtId   = $row['DMTDB_ID'];
+                            //     $subData = $molecularSubtypeMap[$dmtId] ?? [];
+                            //     if (empty($subData)) {
+                            //         echo '-';
+                            //     } else {
+                            //         echo '<div class="expression-tags">';
+                            //         foreach ($subData as $pdcLabel => $info) {
+                            //             $val = $info[$f] ?? null;
+                            //             $formatted = ($val !== null) ? number_format((float)$val, 2) : 'N/A';
+                            //             echo '<span class="expression-tag">'
+                            //                . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($formatted)
+                            //                . '</span>';
+                            //         }
+                            //         echo '</div>';
+                            //     }
 
                             // ── Molecular Subtypes 欄位
                             } elseif ($f === 'molecular_subtypes') {
-                                $dmtId  = $row['DMTDB_ID'];
+                                $dmtId   = $row['DMTDB_ID'];
                                 $subData = $molecularSubtypeMap[$dmtId] ?? [];
+
                                 if (empty($subData)) {
                                     echo '-';
                                 } else {
-                                    echo '<div class="pathway-tags">';
+                                    // 收集兩個樣本中「非 null」的亞型結果
+                                    $subtypesFound = [];
+                                    $titleParts    = [];
                                     foreach ($subData as $pdcLabel => $info) {
-                                        $subtype = $info['subtype'] ?? 'N/A';
+                                        $subtype = $info['subtype'] ?? null;
                                         $ssi     = $info['ssi'];
                                         $ssiText = ($ssi !== null) ? number_format((float)$ssi, 2) : 'N/A';
-                                        echo '<span class="pathway-tag">'
-                                            . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($subtype)
-                                            . '(' . htmlspecialchars($ssiText) . ')'
-                                            . '</span>';
+
+                                        if (!empty($subtype)) {
+                                            $subtypesFound[] = $subtype;
+                                        }
+
+                                        // title：滑鼠移到上面時顯示各樣本的亞型與 SSI
+                                        $titleParts[] = htmlspecialchars($pdcLabel) . ': '
+                                                      . htmlspecialchars($subtype ?? 'N/A')
+                                                      . ' (SSI=' . htmlspecialchars($ssiText) . ')';
                                     }
+
+                                    $uniqueSubtypes = array_unique($subtypesFound);
+                                    $tooltipTitle   = implode(' , ', $titleParts);
+
+                                    echo '<div class="expression-tags">';
+
+                                    if (empty($uniqueSubtypes)) {
+                                        // 規則：兩樣本皆無定量
+                                        echo '<span class="expression-tag" title="' . $tooltipTitle . '">N/A</span>';
+
+                                    } elseif (count($uniqueSubtypes) === 1) {
+                                        // 規則：兩樣本相同亞型，或只有一個樣本有定量
+                                        $subtype = reset($uniqueSubtypes);
+                                        echo '<span class="expression-tag" title="' . $tooltipTitle . '">'
+                                           . htmlspecialchars($subtype)
+                                           . '</span>';
+
+                                    } else {
+                                        // 規則：兩樣本亞型不同
+                                        echo '<span class="expression-tag expression-tag-inconsistent" title="' . $tooltipTitle . '">'
+                                           . 'inconsistent'
+                                           . '</span>';
+                                    }
+
                                     echo '</div>';
                                 }
                             

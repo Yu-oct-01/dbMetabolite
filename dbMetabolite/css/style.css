@@ -412,3 +412,76 @@ body {
 .page-content.hidden {
     display: none;
 }
+
+
+/* Tooltip 標頭容器 */
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+/* ⓘ 圖示樣式 */
+.info-icon {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #718096;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* 浮動提示框 */
+.tooltip-box {
+    visibility: hidden;
+    opacity: 0;
+    width: 240px;
+    background-color: #1a202c;
+    color: #ffffff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 999; /* 提高 z-index 確保蓋在資料列上面 */
+    
+    top: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.5;
+}
+
+/* 提示框下方的小三角形箭頭 */
+.tooltip-box::after {
+    content: "";
+    position: absolute;
+    
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #1a202c transparent; 
+}
+
+/* Hover 時觸發顯示 */
+.tooltip-container:hover .tooltip-box {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 針對內容文字較多的 Tooltip 微調寬度與位置 */
+.tooltip-box.tooltip-box-wide {
+    width: 280px;
+}

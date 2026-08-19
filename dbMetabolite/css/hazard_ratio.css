@@ -29,8 +29,8 @@
 /* 保護因子 (HR < 1 & p < 0.05) - 藍色 */
 .hazard-ratio-tag.protective-factor {
     background: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #42a5f5;
+    color: #0451a9;
+    border: 1px solid #1385e2;
 }
 
 /* 無顯著意義 (p >= 0.05) - 灰色 */

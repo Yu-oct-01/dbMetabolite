@@ -1,0 +1,38 @@
+/* =============================================
+   css/expression.css  —  expression 顏色標示
+   ============================================= */
+
+.expression-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+}
+
+.expression-tag {
+    display: inline-block;
+    background: #eaf3fb;
+    color: #1a5a8a;
+    border: 1px solid #b3d4ec;
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+.expression-tag.expression-low {
+    background: #eafbea;
+    color: #2e7d32;
+    border-color: #b6e3ba;
+}
+.expression-tag.expression-mid {
+    background: #fff8e1;
+    color: #a86a00;
+    border-color: #f0dca0;
+}
+.expression-tag.expression-high {
+    background: #fdeaea;
+    color: #b02a2a;
+    border-color: #f0b3b3;
+}
