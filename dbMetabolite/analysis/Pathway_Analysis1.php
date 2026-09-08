@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// analysis/GSVA Scores.php  —  分析頁
+// analysis/Pathway_Analysis.php  —  分析頁
 // =============================================
 require_once '../config.php';
 ?>
@@ -144,43 +144,46 @@ require_once '../config.php';
 
 <main class="analysis-container">
     <header class="page-header">
-        <h1 class="page-title">GSVA Score Analysis</h1>
+        <h1 class="page-title">CD8+ Tumor Correlation Analysis</h1>
     </header>
 
     <div class="card">
         <div class="image-wrapper">
             <?php
-                $imageName = "analysis_result//Figure_6_boxplot_mesenchymal.png";
-                echo '<img src="' . $imageName . '" alt="GSVA Mesenchymal Subtype Boxplot" class="analysis-img">';
+                $imageName = "analysis_result/Figure_11_CD8plus_tumor_surrounding_genes_Correlations_num2.png";
+                echo '<img src="' . $imageName . '" alt="CD8+ Tumor Surrounding Genes Correlation Heatmap Matrix" class="analysis-img">';
             ?>
         </div>
 
         <section class="caption-section">
             <div class="caption-header">
-                <h2 class="figure-title">Distribution of GSVA Scores for the Three Molecular Subtypes Among Samples Classified as Mesenchymal</h2>
+                <h2 class="figure-title">Spearman Correlation Analysis between CD8+ T Cells and Polyamine Pathway Genes</h2>
                 <div class="tag-group">
-                    <span class="tag">GSVA Score</span>
+                    <span class="tag">CD8+ T Cell Infiltration</span>
+                    <span class="tag">Oncometabolite</span>
                 </div>
             </div>
 
             <p class="caption-body">
-                As illustrated in the boxplots, samples classified as the Mesenchymal subtype exhibited the highest Mesenchymal GSVA enrichment scores. 
-                Nevertheless, samples assigned to the Classical and Proneural subtypes also displayed long-tailed distributions, indicating considerable variation in subtype enrichment. 
-                These extended distributions likely reflect the <strong>intrinsic intratumoral heterogeneity</strong> of GBM and may represent transitional transcriptional states associated with malignant evolution.
+                Spearman correlation analysis was conducted to investigate the associations between genes involved in the polyamine pathway and CD8+ T cells.
+                ODC1, SRM, and SMS exhibited <strong>strong co-expression</strong>, reflecting coordinated activation of the polyamine biosynthetic program. 
+                In contrast, SMOX was negatively correlated with ODC1, suggesting the existence of a <strong>metabolic balance or reciprocal regulatory mechanism</strong> between polyamine biosynthesis and catabolism. 
+                CD8+ T-cell infiltration was negatively correlated with SRM, ODC1, and SMOX. 
+                Since ODC1, SRM, and SMOX are involved in the production and metabolism of spermidine, these findings suggest that elevated spermidine levels within the tumor microenvironment may <strong>suppress CD8+ T-cell infiltration</strong>.
             </p>
 
             <div class="key-points">
                 <div class="point-item">
-                    <div class="point-label">Highest Score</div>
-                    <div class="point-val">Mesenchymal (~0.44)</div>
+                    <div class="point-label">Biosynthesis Co-expression</div>
+                    <div class="point-val">ODC1 vs. SRM (r = 0.32)<br>ODC1 vs. SMS (r = 0.28)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Intermediate</div>
-                    <div class="point-val">Classical (~0.38)</div>
+                    <div class="point-label">Metabolic Balance</div>
+                    <div class="point-val">ODC1 vs. SMOX <br>(r = -0.26)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Lowest Score</div>
-                    <div class="point-val">Proneural (~0.33)</div>
+                    <div class="point-label">T-cell Suppression</div>
+                    <div class="point-val">CD8+ T vs. SMOX (r = -0.17)<br>CD8+ T vs. ODC1 (r = -0.06)<br>CD8+ T vs. SRM (r = -0.04)</div>
                 </div>
             </div>
         </section>

@@ -50,6 +50,15 @@ function expressionTertileLabel(int $tertile): array {
     };
 }
 
+//r 值分級
+function pathwayRGradeClass(?float $r): string {
+    if ($r === null) return 'r-na';
+    $abs = abs($r);
+    $tier = $abs >= 0.7 ? 'strong' : ($abs >= 0.3 ? 'mod' : 'weak');
+    $sign = $r >= 0 ? 'pos' : 'neg';
+    return "r-{$tier}-{$sign}";
+}
+
 // Maximum Expression 來源資料表（PDC dataset name => table name）
 $expressionTables = [
     'PDC000546' => 'cptac3_pdc000546_expressiondata_max',
@@ -105,6 +114,7 @@ if (isset($_GET['ajax_projects'])) {
 $showResults   = false;
 $results       = [];
 $pathwayMap    = [];   // kegg_id => [ ['pathway_id'=>..., 'pathway_name'=>...], ... ]
+$correlationMap = []; // metabolite_name => [ pathway_id => r_meta ]
 $expressionMap = [];   // DMTDB_ID => [ 'PDC000546' => value, 'PDC000552' => value ]
 $hazardRatioMap = [];  // DMTDB_ID => [ 'PDC000546' => value, 'PDC000552' => value ]
 $molecularSubtypeMap = []; // DMTDB_ID => [ 'PDC000546' => ['subtype'=>..., 'ssi'=>...], ... ]
@@ -115,6 +125,11 @@ $errorMsg      = '';
 // 分頁
 $page   = max(1, (int)($_GET['page'] ?? 1));
 $offset = ($page - 1) * PER_PAGE;
+
+// Hazard Ratio 欄位排序參數（白名單防呆）
+$sortableHRFields = ['os_hazard_ratio', 'pfs_hazard_ratio'];
+$sortField = in_array($_GET['sort'] ?? '', $sortableHRFields, true) ? $_GET['sort'] : '';
+$sortDir   = (($_GET['dir'] ?? 'asc') === 'desc') ? 'desc' : 'asc';
 
 // 收到 Submit
 if (!empty($_GET['diseases'])) {
@@ -172,7 +187,13 @@ if (!empty($_GET['diseases'])) {
         $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
         $limit      = PER_PAGE;
 
-        $res = $db->query("SELECT $colsSql FROM metabolites_id ORDER BY DMTDB_ID LIMIT $offset, $limit");
+        // 若要依 Hazard Ratio 排序，因為分類資料在另一張表，SQL 端無法直接 ORDER BY，
+        // 必須先撈出全部資料，排序完再手動切分頁
+        $sql = $sortField
+            ? "SELECT $colsSql FROM metabolites_id ORDER BY DMTDB_ID"
+            : "SELECT $colsSql FROM metabolites_id ORDER BY DMTDB_ID LIMIT $offset, $limit";
+
+        $res = $db->query($sql);
         if (!$res) {
             $errorMsg    = '查詢失敗：' . $db->error;
             $showResults = false;
@@ -181,8 +202,7 @@ if (!empty($_GET['diseases'])) {
         }
 
         // ── 若有選 hazard_ratio 欄位
-        $needHazardRatio = in_array('os_hazard_ratio', $selectedFields) || in_array('pfs_hazard_ratio', $selectedFields);
-
+        $needHazardRatio = in_array('os_hazard_ratio', $selectedFields) || in_array('pfs_hazard_ratio', $selectedFields) || $sortField !== '';
         if ($needHazardRatio && !empty($results)) {
             $dmtdbIds    = array_column($results, 'DMTDB_ID');
             $placeholders = implode(',', array_fill(0, count($dmtdbIds), '?'));
@@ -218,6 +238,45 @@ if (!empty($_GET['diseases'])) {
             }
         }
 
+        // ── 依 Hazard Ratio 分類排序（Risk Factor > Protective Factor > Non-significant） ──
+        if ($sortField && !empty($results)) {
+            $pKey = ($sortField === 'os_hazard_ratio') ? 'os_p_value' : 'pfs_p_value';
+
+            // 取得某代謝物在該欄位上「最顯著」的分類等級：0=Risk, 1=Protective, 2=Non-sig, 3=無資料
+            $classRank = function (string $dmtId) use ($sortField, $pKey, $hazardRatioMap): int {
+                $hrData = $hazardRatioMap[$dmtId] ?? [];
+                if (empty($hrData)) return 3;
+
+                $best = 3;
+                foreach ($hrData as $vals) {
+                    $val    = $vals[$sortField] ?? null;
+                    $pValue = $vals[$pKey] ?? null;
+
+                    $rank = 2; // 預設 Non-significant
+                    if ($pValue !== null && $pValue < 0.05) {
+                        if ($val > 1)      $rank = 0; // Risk Factor
+                        elseif ($val < 1)  $rank = 1; // Protective Factor
+                    }
+                    if ($rank < $best) $best = $rank; // 多個樣本時，取最顯著的分類代表這個代謝物
+                }
+                return $best;
+            };
+
+            usort($results, function ($a, $b) use ($classRank, $sortDir) {
+                $rankA = $classRank($a['DMTDB_ID']);
+                $rankB = $classRank($b['DMTDB_ID']);
+
+                if ($rankA !== $rankB) {
+                    return $sortDir === 'desc' ? ($rankB <=> $rankA) : ($rankA <=> $rankB);
+                }
+                // 分類相同（例如都是 Risk Factor）→ 依代謝物 ID 排序
+                return strcmp($a['DMTDB_ID'], $b['DMTDB_ID']);
+            });
+
+            // 排序完成才切出目前頁碼要顯示的資料
+            $results = array_slice($results, $offset, $limit);
+        }
+
         // ── Pathway 查詢 ──────────────────────────────────────────────
         // 若使用者有勾選 pathway 欄位，批次撈出本頁所有代謝物的代謝途徑名稱
         if ($needPathway && !empty($results)) {
@@ -246,6 +305,24 @@ if (!empty($_GET['diseases'])) {
                         'pathway_name' => $pRow['pathway_name'] ?? $pRow['pathway_id'],
                         'kegg_id'      => $pRow['kegg_id'],
                     ];
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────
+
+        // ────pathway相關係數 查詢─────────────────────────────────────
+        if ($needPathway && !empty($results)) {
+            $metaNames = array_unique(array_column($results, 'metabolite_name'));
+            if (!empty($metaNames)) {
+                $ph = implode(',', array_fill(0, count($metaNames), '?'));
+                $stmt = $db->prepare(
+                    "SELECT metabolite_name, pathway_id, r_meta
+                    FROM gbm_metabolite_pathway_correlation_coefficient
+                    WHERE metabolite_name IN ($ph)"
+                );
+                $stmt->execute(array_values($metaNames));
+                while ($cRow = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $correlationMap[$cRow['metabolite_name']][$cRow['pathway_id']] = $cRow['r_meta'];
                 }
             }
         }
@@ -326,6 +403,17 @@ function pageUrl(int $p): string {
     $params['page'] = $p;
     return '?' . http_build_query($params);
 }
+
+// 輔助：產生 Hazard Ratio 排序連結 URL
+function sortUrl(string $field): string {
+    global $sortField, $sortDir;
+    $params = $_GET;
+    $params['sort'] = $field;
+    $params['dir']  = ($sortField === $field && $sortDir === 'asc') ? 'desc' : 'asc';
+    $params['page'] = 1; // 換排序時重置回第 1 頁
+    return '?' . http_build_query($params);
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -434,19 +522,25 @@ function pageUrl(int $p): string {
                                 <?php if ($f === 'max_expression'): ?>
                                     <div class="tooltip-container">
                                         <span class="info-icon">i</span>
-                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <a href="analysis/Maximum_Expression.php">
+                                            <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        </a>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>Expression Info:</strong><br>
-                                            Expression for each sample are detailed in metabolite pages.
+                                            1. Expression for each sample are detailed in metabolite pages.<br>
+                                            2. Click to see Expression Line Plot.
                                         </div>
                                     </div>
                                 <?php elseif ($f === 'molecular_subtypes'): ?>
                                     <div class="tooltip-container">
                                         <span class="info-icon">i</span>
-                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        <a href="analysis/Molecular_Subtypes.php">
+                                            <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                        </a>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>Molecular Subtypes Info:</strong><br>
-                                            Expression levels for each subtype are detailed in metabolite pages.
+                                            1. Expression levels for each subtype are detailed in metabolite pages.<br>
+                                            2. Click to go Molecular Subtypes analysis page.
                                         </div>
                                     </div>
                                 <?php elseif ($f === 'pathway'): ?>
@@ -462,20 +556,26 @@ function pageUrl(int $p): string {
                                 <?php elseif ($f === 'os_hazard_ratio'): ?>
                                     <div class="tooltip-container">
                                         <span class="info-icon">i</span>
-                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>OS Hazard Ratio Info:</strong><br>
                                             Tap to view HR、p-value for each sample.                                        
                                         </div>
+                                        <a href="<?= htmlspecialchars(sortUrl('os_hazard_ratio')) ?>" class="sortable-th">
+                                            <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                            <span class="sort-icon"><?= $sortField === 'os_hazard_ratio' ? ($sortDir === 'asc' ? '▲' : '▼') : '⇅' ?></span>
+                                        </a>
                                     </div>
                                 <?php elseif ($f === 'pfs_hazard_ratio'): ?>
                                     <div class="tooltip-container">
                                         <span class="info-icon">i</span>
-                                        <span><?= htmlspecialchars($allFields[$f]) ?></span>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>PFS Hazard Ratio Info:</strong><br>
                                             Tap to view HR、p-value for each sample.
                                         </div>
+                                        <a href="<?= htmlspecialchars(sortUrl('pfs_hazard_ratio')) ?>" class="sortable-th">
+                                            <span><?= htmlspecialchars($allFields[$f]) ?></span>
+                                            <span class="sort-icon"><?= $sortField === 'pfs_hazard_ratio' ? ($sortDir === 'asc' ? '▲' : '▼') : '⇅' ?></span>
+                                        </a>
                                     </div>
                                 <?php else: ?>
                                     <?= htmlspecialchars($allFields[$f]) ?>
@@ -499,7 +599,7 @@ function pageUrl(int $p): string {
                         <?php foreach ($selectedFields as $f): ?>
                         <td>
                             <?php
-                            // ── Pathway 欄位：從 pathwayMap 撈對應途徑 ──
+                            // ── Pathway 欄位：從 pathwayMap 撈對應途徑，並依 r 值分級上色 ──
                             if ($f === 'pathway') {
                                 $keggId   = $row['KEGG_ID'] ?? '';
                                 $pathways = (!empty($keggId) && isset($pathwayMap[$keggId]))
@@ -515,20 +615,25 @@ function pageUrl(int $p): string {
                                     $uid     = 'pw_' . htmlspecialchars($row['DMTDB_ID']);
                                     echo '<div class="pathway-tags">';
                                     foreach ($pathways as $i => $pw) {
-                                        $hidden = (!$showAll && $i >= $limit) ? ' style="display:none;"' : '';
-                                        $keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' . 
-                                                    htmlspecialchars($pw['pathway_id']) . 
-                                                    '&multi_query=' . 
+                                        $hidden  = (!$showAll && $i >= $limit) ? ' style="display:none;"' : '';
+                                        $keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' .
+                                                    htmlspecialchars($pw['pathway_id']) .
+                                                    '&multi_query=' .
                                                     htmlspecialchars($pw['kegg_id'] ?? '');
-                                        echo '<span class="pathway-tag"' . $hidden . ' data-group="' . $uid . '">'
-                                           . '<a href="' . $keggUrl . '" target="_blank" title="' . htmlspecialchars($pw['pathway_id']) . '">'
-                                           . htmlspecialchars($pw['pathway_name'])
-                                           . '</a></span>';
+
+                                        // 依 metabolite_name + pathway_id 查對應的 r 值，並轉成分級 class
+                                        $r      = $correlationMap[$row['metabolite_name']][$pw['pathway_id']] ?? null;
+                                        $rClass = pathwayRGradeClass($r);
+
+                                        echo '<span class="pathway-tag ' . $rClass . '"' . $hidden . ' data-group="' . $uid . '">'
+                                        . '<a href="' . $keggUrl . '" target="_blank" title="' . htmlspecialchars($pw['pathway_id']) . '">'
+                                        . htmlspecialchars($pw['pathway_name'])
+                                        . '</a></span>';
                                     }
                                     if (!$showAll) {
                                         $extra = count($pathways) - $limit;
                                         echo '<span class="pathway-more" onclick="togglePathways(\'' . $uid . '\', this)">'
-                                           . '+' . $extra . ' more</span>';
+                                        . '+' . $extra . ' more</span>';
                                     }
                                     echo '</div>';
                                 }

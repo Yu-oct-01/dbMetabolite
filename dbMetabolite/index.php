@@ -45,20 +45,26 @@ require_once 'config.php';
             They originate from various chemical reactions within cells and are essential for maintaining life activities.
         </p>
         <p>
-                Metabolites possess several important characteristics: <br>
-                &emsp; 1.Small molecular size and diverse structures: <br>
-                &emsp;&emsp;&emsp; Most are small molecule compounds, but their chemical structures vary greatly, such as carbohydrates, lipids, organic acids, and amino acids.<br>
-                &emsp; 2.Highly dynamic: <br>
-                &emsp;&emsp;&emsp; Metabolite concentrations change rapidly with environmental factors, nutrition, disease, stress, or time, reflecting physiological states in real time.<br>
-                &emsp; 3.Closely related to physiological functions: <br>
-                &emsp;&emsp;&emsp; They directly participate in energy production, substance synthesis, signal transduction, and the regulation of cellular activities.<br>
-                &emsp; 4.Species and tissue specificity: <br>
-                &emsp;&emsp;&emsp; The composition of metabolites may differ among different species, tissues, and even cell types.<br>
-                &emsp; 5.Influenced by both genes and environment: <br>
-                &emsp;&emsp;&emsp; Genes determine metabolic pathways, but diet, lifestyle, and the external environment also significantly affect metabolite expression.<br>
-                &emsp; 6.Can serve as biomarkers: <br>
-                &emsp;&emsp;&emsp; Some metabolites can be used for disease diagnosis, prognostic assessment, or tracking of treatment effectiveness.<br>
-            </p>
+            Metabolites possess several important characteristics: <br>
+            &emsp; 1.Small molecular size and diverse structures: <br>
+            &emsp;&emsp;&emsp; Most are small molecule compounds, but their chemical structures vary greatly, such as carbohydrates, lipids, organic acids, and amino acids.<br>
+            &emsp; 2.Highly dynamic: <br>
+            &emsp;&emsp;&emsp; Metabolite concentrations change rapidly with environmental factors, nutrition, disease, stress, or time, reflecting physiological states in real time.<br>
+            &emsp; 3.Closely related to physiological functions: <br>
+            &emsp;&emsp;&emsp; They directly participate in energy production, substance synthesis, signal transduction, and the regulation of cellular activities.<br>
+            &emsp; 4.Species and tissue specificity: <br>
+            &emsp;&emsp;&emsp; The composition of metabolites may differ among different species, tissues, and even cell types.<br>
+            &emsp; 5.Influenced by both genes and environment: <br>
+            &emsp;&emsp;&emsp; Genes determine metabolic pathways, but diet, lifestyle, and the external environment also significantly affect metabolite expression.<br>
+            &emsp; 6.Can serve as biomarkers: <br>
+            &emsp;&emsp;&emsp; Some metabolites can be used for disease diagnosis, prognostic assessment, or tracking of treatment effectiveness.<br>
+        </p>
+    </div>
+    <div class="intro-section">
+        <h2>References</h2>
+        <p>
+            1. Li Y, Zhu Y, Chen L et al.: Transcription factor ZBTB42 is a novel prognostic factor associated with immune cell infiltration in glioma. Front Pharmacol, 14, 1102277 (2023).
+        </p>
     </div>
 </div>
 

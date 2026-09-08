@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// analysis/GSVA Scores.php  —  分析頁
+// analysis/Immune_Cell_Correlation.php  —  分析頁
 // =============================================
 require_once '../config.php';
 ?>
@@ -144,43 +144,45 @@ require_once '../config.php';
 
 <main class="analysis-container">
     <header class="page-header">
-        <h1 class="page-title">GSVA Score Analysis</h1>
+        <h1 class="page-title">Immune Cell Correlation Analysis</h1>
     </header>
 
     <div class="card">
         <div class="image-wrapper">
             <?php
-                $imageName = "analysis_result//Figure_6_boxplot_mesenchymal.png";
-                echo '<img src="' . $imageName . '" alt="GSVA Mesenchymal Subtype Boxplot" class="analysis-img">';
+                $imageName = "analysis_result/Figure_10_ZBTB42_Correlations.png";
+                echo '<img src="' . $imageName . '" alt="Immune Cell Correlation Heatmap Matrix" class="analysis-img">';
             ?>
         </div>
 
         <section class="caption-section">
             <div class="caption-header">
-                <h2 class="figure-title">Distribution of GSVA Scores for the Three Molecular Subtypes Among Samples Classified as Mesenchymal</h2>
+                <h2 class="figure-title">Spearman correlation analysis of ZBTB42 with CD28, CD247, AKT1, and CSF1</h2>
                 <div class="tag-group">
-                    <span class="tag">GSVA Score</span>
+                    <span class="tag">Immune Cell</span>
                 </div>
             </div>
 
             <p class="caption-body">
-                As illustrated in the boxplots, samples classified as the Mesenchymal subtype exhibited the highest Mesenchymal GSVA enrichment scores. 
-                Nevertheless, samples assigned to the Classical and Proneural subtypes also displayed long-tailed distributions, indicating considerable variation in subtype enrichment. 
-                These extended distributions likely reflect the <strong>intrinsic intratumoral heterogeneity</strong> of GBM and may represent transitional transcriptional states associated with malignant evolution.
+                <strong> ZBTB42: A Novel Prognostic Factor Associated with Immune Cell Infiltration</strong><br>
+                Spearman correlation analysis was performed to evaluate the associations between ZBTB42 and CD28, CD247, AKT1, and CSF1. 
+                The result showed that ZBTB42 was highly related to the T cell activation-related genes, such as CD28, CD247, AKT1, etc. 
+                ZBTB42 was positively related to CSF1, which is known for promoting glioma <strong>immune suppression</strong>[1]. 
+                Correlation analysis suggested that the high expression of ZBTB42 may promote glioma progression via immune suppression microenvironment.
             </p>
 
             <div class="key-points">
                 <div class="point-item">
-                    <div class="point-label">Highest Score</div>
-                    <div class="point-val">Mesenchymal (~0.44)</div>
+                    <div class="point-label">Highest Correlation</div>
+                    <div class="point-val">ZBTB42 vs. AKT1<br>(r = 0.60)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Intermediate</div>
-                    <div class="point-val">Classical (~0.38)</div>
+                    <div class="point-label">Immune Suppression</div>
+                    <div class="point-val">ZBTB42 vs. CSF1<br>(r = 0.28)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Lowest Score</div>
-                    <div class="point-val">Proneural (~0.33)</div>
+                    <div class="point-label">T Cell Infiltration</div>
+                    <div class="point-val">ZBTB42 vs. CD28 / CD247<br>(r = 0.27 / 0.16)</div>
                 </div>
             </div>
         </section>

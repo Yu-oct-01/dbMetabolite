@@ -37,7 +37,8 @@ dbMetabolite/
 ├── immunedata.php
 ├── analysis/
 │   ├── Maximum_Expression.php
-│   └── GSVA_Scores.php
+│   ├── Molecular_Subtypes.php
+│   └── Stemness_Score.php
 ├── download.php
 ├── downloads/          
 │   └── KEGG_keggID_pathwayID_pathwayName.xlsx

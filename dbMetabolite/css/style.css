@@ -485,3 +485,11 @@ body {
 .tooltip-box.tooltip-box-wide {
     width: 280px;
 }
+
+.tooltip-container a {
+    text-decoration: none;
+    color: inherit;
+}
+.tooltip-container a:hover span {
+    text-decoration: underline;
+}

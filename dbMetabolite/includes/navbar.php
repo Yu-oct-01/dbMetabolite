@@ -27,9 +27,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <a class="dropdown-item" href="#">Glioma(GBM) »</a>
                         <div class="dropdown-menu sub-menu">
                             <a class="dropdown-item" href="/analysis/Maximum_Expression.php">Maximum Expression</a>
-                            <a class="dropdown-item" href="/analysis/GSVA_Scores.php">GSVA Scores</a>
-                            <a class="dropdown-item" href="#">腫瘤幹性</a>
-                            <a class="dropdown-item" href="#">其他項目</a>
+                            <a class="dropdown-item" href="/analysis/Molecular_Subtypes.php">Molecular Subtypes</a>
+                            <a class="dropdown-item" href="/analysis/Pathway_Analysis.php">Pathway Analysis</a>
+                            <a class="dropdown-item" href="/analysis/Stemness_Score.php">Stemness Score</a>
+                            <a class="dropdown-item" href="/analysis/Immune_Cell_Correlation.php">Immune Cell Correlation</a>
+                            
                         </div>
                     </div>
                     

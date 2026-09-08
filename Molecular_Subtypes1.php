@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// analysis/GSVA Scores.php  —  分析頁
+// analysis/Molecular_Subtypes.php  —  分析頁
 // =============================================
 require_once '../config.php';
 ?>
@@ -146,6 +146,12 @@ require_once '../config.php';
     <header class="page-header">
         <h1 class="page-title">GSVA Score Analysis</h1>
     </header>
+
+    <nav class="nav-tabs" id="metab-tabs">
+        <button class="tab active" data-target="sec-identification">Browse</button>
+        <button class="tab"        data-target="sec-molecular">Analysis</button>
+        <button class="tab"        data-target="sec-prognosis">References</button>
+    </nav>
 
     <div class="card">
         <div class="image-wrapper">

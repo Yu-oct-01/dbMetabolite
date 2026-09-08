@@ -63,3 +63,13 @@
 .hazard-ratio-more:hover {
     background: #e0e0e0;
 }
+
+.data-table th .sortable-th {
+    cursor: pointer;
+    text-decoration: none;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.sort-icon { font-size: 11px; opacity: 0.6; }

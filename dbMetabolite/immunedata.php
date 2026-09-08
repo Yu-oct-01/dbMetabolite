@@ -202,7 +202,10 @@ function pageUrl(int $p): string {
 
     <!-- ===== 結果區域 ===== -->
     <div class="table-container show">
-        <a href="immunedata.php" class="btn-back">← Back to Selection</a>
+        <div class="table-header-actions">
+            <a href="immunedata.php" class="btn-back">← Back to Selection</a>
+            <a href="analysis/Stemness_Score.php" class="btn-stemness">Stemness Score Analysis</a>
+        </div>
 
         <?php if ($errorMsg): ?>
             <div class="alert alert-danger"><?= htmlspecialchars($errorMsg) ?></div>

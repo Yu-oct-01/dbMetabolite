@@ -145,3 +145,13 @@ a.kegg-link:hover {
     background-color: #2980b9;
     border-radius: 10px;
 }
+
+.r-strong-pos { background:#fddede; color:#b91c1c; border-color:#f5a3a3; }
+.r-mod-pos    { background:#fdeceb; color:#c0392b; border-color:#f2b8b0; }
+.r-weak-pos   { background:#faf1f0; color:#c0392b; border-color:#e6c9c5; }
+
+.r-strong-neg { background:#dbeafe; color:#1e40af; border-color:#a8c6f5; }
+.r-mod-neg    { background:#e6f0fd; color:#2563eb; border-color:#bcd4f7; }
+.r-weak-neg   { background:#eef4fc; color:#2563eb; border-color:#cfdff3; }
+
+.r-na { background:#f5f5f5; color:#666; border-color:#bdbdbd; } /* 沒有 r 值資料 */

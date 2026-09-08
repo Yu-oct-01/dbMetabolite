@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// analysis/GSVA Scores.php  —  分析頁
+// analysis/Stemness Score.php  —  分析頁
 // =============================================
 require_once '../config.php';
 ?>
@@ -144,43 +144,43 @@ require_once '../config.php';
 
 <main class="analysis-container">
     <header class="page-header">
-        <h1 class="page-title">GSVA Score Analysis</h1>
+        <h1 class="page-title">Stemness Score Analysis</h1>
     </header>
 
     <div class="card">
         <div class="image-wrapper">
             <?php
-                $imageName = "analysis_result//Figure_6_boxplot_mesenchymal.png";
-                echo '<img src="' . $imageName . '" alt="GSVA Mesenchymal Subtype Boxplot" class="analysis-img">';
+                $imageName = "analysis_result/Figure_7_stemness_score_Correlations_spearman.png";
+                echo '<img src="' . $imageName . '" alt="Stemness Score Correlation Heatmap Matrix" class="analysis-img">';
             ?>
         </div>
 
         <section class="caption-section">
             <div class="caption-header">
-                <h2 class="figure-title">Distribution of GSVA Scores for the Three Molecular Subtypes Among Samples Classified as Mesenchymal</h2>
+                <h2 class="figure-title">Spearman Correlation Matrix of Stemness Gene Signatures</h2>
                 <div class="tag-group">
-                    <span class="tag">GSVA Score</span>
+                    <span class="tag">Stemness Score</span>
                 </div>
             </div>
 
             <p class="caption-body">
-                As illustrated in the boxplots, samples classified as the Mesenchymal subtype exhibited the highest Mesenchymal GSVA enrichment scores. 
-                Nevertheless, samples assigned to the Classical and Proneural subtypes also displayed long-tailed distributions, indicating considerable variation in subtype enrichment. 
-                These extended distributions likely reflect the <strong>intrinsic intratumoral heterogeneity</strong> of GBM and may represent transitional transcriptional states associated with malignant evolution.
+                Spearman correlation analysis was performed to evaluate relationships among different stemness scores. 
+                The results demonstrated that <strong>BENPORATH_ES_1</strong>, <strong>BENPORATH_ES_2</strong>, and <strong>WONG_EMBRYONIC_STEM_CELL_CORE</strong> were highly correlated, indicating that these gene sets capture similar stemness characteristics. 
+                Overall, the correlation patterns suggested the presence of two distinct biological dimensions of tumor stemness.
             </p>
 
             <div class="key-points">
                 <div class="point-item">
-                    <div class="point-label">Highest Score</div>
-                    <div class="point-val">Mesenchymal (~0.44)</div>
+                    <div class="point-label">Highest Correlation</div>
+                    <div class="point-val">Wong Core vs. Benporath ES 1/2 <br>(r = 0.90)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Intermediate</div>
-                    <div class="point-val">Classical (~0.38)</div>
+                    <div class="point-label">ES-like Cluster</div>
+                    <div class="point-val">Benporath ES 1 vs. ES 2 <br>(r = 0.79)</div>
                 </div>
                 <div class="point-item">
-                    <div class="point-label">Lowest Score</div>
-                    <div class="point-val">Proneural (~0.33)</div>
+                    <div class="point-label">Distinct Dimension</div>
+                    <div class="point-val">Ivanova HSC vs. Benporath ES 1/2 <br>(r ≈ 0)</div>
                 </div>
             </div>
         </section>
