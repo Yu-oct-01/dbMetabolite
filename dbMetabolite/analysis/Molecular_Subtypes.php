@@ -90,27 +90,29 @@ try {
     foreach ($browseMolecularSubtypeTables as $pdcLabel => $tblName) {
         $stmt = $db->prepare(
             "SELECT m.DMTDB_ID, i.metabolite_name, i.KEGG_ID, m.MAX_concentration_subtype AS subtype
-             FROM `$tblName` m
-             JOIN metabolites_id i ON i.DMTDB_ID = m.DMTDB_ID
-             WHERE m.MAX_concentration_subtype IN ($phSubtypes)"
+            FROM `$tblName` m
+            JOIN metabolites_id i ON i.DMTDB_ID = m.DMTDB_ID
+            WHERE m.MAX_concentration_subtype IN ($phSubtypes)"
         );
         $stmt->execute(array_values($effectiveSubtypes));
         while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $browseRows[] = [
-                'DMTDB_ID'        => $r['DMTDB_ID'],
-                'metabolite_name' => $r['metabolite_name'],
-                'KEGG_ID'         => $r['KEGG_ID'],
-                'dataset'         => $pdcLabel,
-                'subtype'         => $r['subtype'],
-            ];
+            $dmtId = $r['DMTDB_ID'];
+            if (!isset($browseRows[$dmtId])) {
+                $browseRows[$dmtId] = [
+                    'DMTDB_ID'        => $dmtId,
+                    'metabolite_name' => $r['metabolite_name'],
+                    'KEGG_ID'         => $r['KEGG_ID'],
+                    'subtypes'        => [],
+                ];
+            }
+            $browseRows[$dmtId]['subtypes'][$pdcLabel] = $r['subtype'];
         }
     }
 
-    // 排序：先依 Metabolite ID，再依資料集
+    // 排序依 Metabolite ID
+    $browseRows = array_values($browseRows);
     usort($browseRows, function ($a, $b) {
-        return $a['DMTDB_ID'] === $b['DMTDB_ID']
-            ? strcmp($a['dataset'], $b['dataset'])
-            : strcmp($a['DMTDB_ID'], $b['DMTDB_ID']);
+        return strcmp($a['DMTDB_ID'], $b['DMTDB_ID']);
     });
 
     $browseTotal      = count($browseRows);
@@ -641,7 +643,6 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                         <th>Metabolite ID</th>
                                         <th>Name</th>
                                         <th>Subtype</th>
-                                        <th>Dataset</th>
                                         <?php foreach ($selectedOtherFields as $f): ?>
                                             <th><?= htmlspecialchars($otherFieldOptions[$f]) ?></th>
                                         <?php endforeach; ?>
@@ -649,8 +650,7 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                 </thead>
                                 <tbody>
                                 <?php if (empty($browsePageRows)): ?>
-                                    <tr><td colspan="<?= 4 + count($selectedOtherFields) ?>" style="text-align:center;color:#999;">No records found.</td></tr>
-                                <?php else: ?>
+                                    <tr><td colspan="<?= 3 + count($selectedOtherFields) ?>" style="text-align:center;color:#999;">No records found.</td></tr>                                <?php else: ?>
                                     <?php foreach ($browsePageRows as $row): ?>
                                     <tr>
                                         <td>
@@ -659,8 +659,13 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                             </a>
                                         </td>
                                         <td><?= htmlspecialchars($row['metabolite_name']) ?></td>
-                                        <td><?= htmlspecialchars($row['subtype']) ?></td>
-                                        <td><?= htmlspecialchars($row['dataset']) ?></td>
+                                        <td>
+                                            <div class="expression-tags">
+                                            <?php foreach ($row['subtypes'] as $pdcLabel => $subtype): ?>
+                                                <span class="expression-tag"><?= htmlspecialchars($pdcLabel) ?>: <?= htmlspecialchars($subtype) ?></span>
+                                            <?php endforeach; ?>
+                                            </div>
+                                        </td>
                                         <?php foreach ($selectedOtherFields as $f): ?>
                                         <td>
                                     <?php
@@ -691,7 +696,7 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                         } else {
                                             $limit   = 5;
                                             $showAll = count($pathways) <= $limit;
-                                            $uid     = 'bpw_' . htmlspecialchars($dmtId) . '_' . htmlspecialchars($row['dataset']);
+                                            $uid     = 'bpw_' . htmlspecialchars($dmtId);
                                             echo '<div class="pathway-tags">';
                                             foreach ($pathways as $i => $pw) {
                                                 $hidden  = (!$showAll && $i >= $limit) ? ' style="display:none;"' : '';
@@ -720,7 +725,7 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                             echo '-';
                                         } else {
                                             $prefix = $f === 'os_hazard_ratio' ? 'os' : 'pfs';
-                                            $uid = 'bhr_' . $prefix . '_' . htmlspecialchars($dmtId) . '_' . htmlspecialchars($row['dataset']);
+                                            $uid = 'bhr_' . $prefix . '_' . htmlspecialchars($dmtId);
                                             echo '<div class="hazard-ratio-tags">';
                                             $tagCount = 0;
                                             foreach ($hrData as $pdcLabel => $vals) {
