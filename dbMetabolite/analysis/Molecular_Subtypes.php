@@ -19,6 +19,13 @@ $otherFieldOptions = [
     'pfs_hazard_ratio' => 'PFS Hazard Ratio',
 ];
 
+// Maximum Expression 底下的分級 chip 選項
+$expressionLevelOptions = [
+    3 => 'high expression',
+    2 => 'medium expression',
+    1 => 'low expression',
+];
+
 // 分子亞型來源資料表（PDC dataset name => table name）
 $browseMolecularSubtypeTables = [
     'PDC000546' => 'cptac3_pdc000546_metabolite_molecular',
@@ -37,7 +44,7 @@ $browseHazardRatioTables = [
     'PDC000552' => 'cptac3_pdc000552_hazard_ratio_max',
 ];
 
-// 表達量分級（同 metabolites.php 邏輯）
+// 表達量分級
 function browseExpressionTertileLabel(int $tertile): array {
     return match ($tertile) {
         1 => ['label' => 'low expression', 'class' => 'expression-low'],
@@ -69,6 +76,13 @@ $needHazardRatio = in_array('os_hazard_ratio', $selectedOtherFields, true) || in
 
 // 分頁
 $browsePage = max(1, (int)($_GET['page'] ?? 1));
+
+// Maximum Expression 分級篩選：都沒勾 = 三種都顯示；勾幾個顯示幾個
+$selectedExpressionLevels = array_map('intval', array_intersect(
+    (array)($_GET['expr_level'] ?? []),
+    array_map('strval', array_keys($expressionLevelOptions))
+));
+$effectiveExpressionLevels = empty($selectedExpressionLevels) ? array_keys($expressionLevelOptions) : $selectedExpressionLevels;
 
 // 分頁連結（pagination.php 需要此函式）
 function pageUrl(int $p): string {
@@ -463,7 +477,7 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
             align-items: center;
             gap: 8px;
             margin-bottom: 10px;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: #4a5568;
             cursor: pointer;
         }
@@ -607,10 +621,23 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                         <?php foreach ($otherFieldOptions as $val => $label): ?>
                             <label class="filter-checkbox-label">
                                 <input type="checkbox" name="other[]" value="<?= htmlspecialchars($val) ?>"
-                                       <?= in_array($val, $selectedOtherFields, true) ? 'checked' : '' ?>
-                                       onchange="document.getElementById('browseFilterForm').submit();">
+                                    <?= in_array($val, $selectedOtherFields, true) ? 'checked' : '' ?>
+                                    onchange="document.getElementById('browseFilterForm').submit();">
                                 <?= htmlspecialchars($label) ?>
                             </label>
+
+                            <?php if ($val === 'max_expression' && $needExpression): ?>
+                            <div style="margin:0.2rem 0 0.8rem 1.5rem; display:flex; flex-direction:column; gap:0.4rem;">
+                                <?php foreach ($expressionLevelOptions as $lvl => $lvlLabel): ?>
+                                    <label class="filter-checkbox-label">
+                                        <input type="checkbox" name="expr_level[]" value="<?= $lvl ?>"
+                                            <?= in_array($lvl, $effectiveExpressionLevels, true) ? 'checked' : '' ?>
+                                            onchange="document.getElementById('browseFilterForm').submit();">
+                                        <?= htmlspecialchars($lvlLabel) ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
                 </form>
@@ -672,7 +699,10 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                     $dmtId = $row['DMTDB_ID'];
 
                                     if ($f === 'max_expression') {
-                                        $expData = $browseExpressionMap[$dmtId] ?? [];
+                                        $expData = array_filter(
+                                            $browseExpressionMap[$dmtId] ?? [],
+                                            fn($tertile) => in_array((int)$tertile, $effectiveExpressionLevels, true)
+                                        );
                                         if (empty($expData)) {
                                             echo '-';
                                         } else {
@@ -680,8 +710,8 @@ if (!empty($browsePageRows) && !$browseErrorMsg) {
                                             foreach ($expData as $pdcLabel => $tertile) {
                                                 $info = browseExpressionTertileLabel((int)$tertile);
                                                 echo '<span class="expression-tag ' . $info['class'] . '">'
-                                                   . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($info['label'])
-                                                   . '</span>';
+                                                . htmlspecialchars($pdcLabel) . ': ' . htmlspecialchars($info['label'])
+                                                . '</span>';
                                             }
                                             echo '</div>';
                                         }
