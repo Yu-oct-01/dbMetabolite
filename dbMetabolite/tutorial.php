@@ -13,6 +13,5 @@ require_once 'config.php';
     <title>Metabolite Database - Tutorial</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
 
 <?php include BASE_PATH . 'includes/navbar.php'; ?>

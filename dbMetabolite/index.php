@@ -60,12 +60,12 @@ require_once 'config.php';
             &emsp;&emsp;&emsp; Some metabolites can be used for disease diagnosis, prognostic assessment, or tracking of treatment effectiveness.<br>
         </p>
     </div>
-    <div class="intro-section">
+    <!-- <div class="intro-section">
         <h2>References</h2>
         <p>
             1. Li Y, Zhu Y, Chen L et al.: Transcription factor ZBTB42 is a novel prognostic factor associated with immune cell infiltration in glioma. Front Pharmacol, 14, 1102277 (2023).
         </p>
-    </div>
+    </div> -->
 </div>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>

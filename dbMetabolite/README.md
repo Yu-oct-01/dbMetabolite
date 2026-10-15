@@ -36,9 +36,9 @@ dbMetabolite/
 ├── metabolites.php
 ├── immunedata.php
 ├── analysis/
-│   ├── Maximum_Expression.php
-│   ├── Molecular_Subtypes.php
-│   └── Stemness_Score.php
+│   ├── overview.php
+│   ├── molecular_subtypes.js
+│   └── molecular_subtypes.php
 ├── download.php
 ├── downloads/          
 │   └── KEGG_keggID_pathwayID_pathwayName.xlsx

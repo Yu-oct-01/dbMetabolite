@@ -17,14 +17,16 @@ body {
     min-height: 100vh;          /* 新增 */
 }
 
-/* 導航欄樣式 */
+/* ============================================= */
+ /* 導航欄樣式 */
 .navbar {
-    background-color: #2c3e50;
-    padding: 0;
+    background-color: #2c3e50 !important;
+    padding: 0 !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     position: sticky;
     top: 0;
     z-index: 1000;
+    display: block !important; /* 防止 Bootstrap flex 佈局打亂 */
 }
 
 .navbar-container {
@@ -32,99 +34,131 @@ body {
     margin: 0 auto;
     display: flex;
     align-items: center;
+    width: 100%;
 }
 
 .logo {
     padding: 15px 20px;
-    color: white;
+    color: white !important;
     font-size: 24px;
     font-weight: bold;
-    text-decoration: none;
+    text-decoration: none !important;
     background-color: #34495e;
     cursor: pointer;
+    white-space: nowrap;
 }
 
+/* 消除黑點清單與重置外距/內距 */
 .nav-menu {
-    display: flex;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+    display: flex !important;
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
     flex: 1;
+}
+
+.nav-item {
+    position: relative;
+    list-style: none !important; /* 強制去除黑點 */
+    margin: 0 !important;
+}
+
+.nav-link {
+    display: block !important;
+    color: white !important;
+    text-decoration: none !important;
+    padding: 20px 20px !important;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background-color: #34495e !important;
+    color: white !important;
+}
+
+/* 下拉選單 - 第一層 */
+.dropdown-menu {
+    display: none !important;
+    position: absolute;
+    background-color: #ffffff !important;
+    min-width: 220px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    z-index: 1000;
+    top: 100%;
+    left: 0;
+    padding: 6px 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.nav-item:hover > .dropdown-menu {
+    display: block !important;
 }
 
 .dropdown-submenu {
     position: relative;
 }
 
+/* 下拉選單 - 第二層子選單 */
 .dropdown-submenu .sub-menu {
     position: absolute;
-    top: 0;
+    top: -7px; /* 向上對齊父容器圓角與 padding */
     left: 100%;
-    margin-top: -1px;
-    background-color: rgba(44, 62, 80, 0.72); 
-    
-    min-width: 100px;
-    
-    box-shadow: 4px 4px 6px rgba(0,0,0,0.1);
-    display: none;               
+    margin-left: 2px; /* 避免兩層選單完全貼死 */
+    background-color: #ffffff !important;
+    min-width: 230px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 6px 0 !important;
+    display: none !important;
 }
 
 .dropdown-submenu:hover > .sub-menu {
-    display: block;
+    display: block !important;
 }
 
-.nav-item {
-    position: relative;
-}
-
-.nav-link {
-    display: block;
-    color: white;
-    text-decoration: none;
-    padding: 20px 20px;
-    transition: background-color 0.3s;
-    cursor: pointer;
-}
-
-.nav-link:hover {
-    background-color: #34495e;
-}
-
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    background-color: #2c3e50;
-    min-width: 220px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    z-index: 1000;
-    top: 100%;
-    left: 0;
-}
-
-.nav-item:hover > .dropdown-menu {
-    display: block;
-}
-
+/* 通用連結文字樣式 */
+.dropdown-menu a,
 .dropdown-submenu .sub-menu .dropdown-item {
-    padding: 5px 15px;
+    color: #334155 !important;
+    padding: 9px 18px !important;
+    text-decoration: none !important;
+    display: block;
     font-size: 14px;
     white-space: nowrap;
-    color: white;
-}
-
-.dropdown-menu a {
-    color: white;
-    padding: 12px 20px;
-    text-decoration: none;
-    display: block;
-    border-bottom: 1px solid #34495e;
     cursor: pointer;
+    border-bottom: none !important; /* 移除原本生硬的底線 */
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.dropdown-menu a:hover {
-    background-color: #34495e;
+/* 滑鼠懸停效果 (Hover) */
+.dropdown-menu a:hover,
+.dropdown-submenu .sub-menu .dropdown-item:hover {
+    background-color: #f0f7ff !important; /* 淺藍亮色底 */
+    color: #1d4ed8 !important;            /* 主題科技藍 */
 }
 
+/* 分隔線 */
+.dropdown-divider {
+    border-top: 1px solid #f1f5f9 !important;
+    margin: 6px 0 !important;
+}
+
+/* 分類小標題（例如 Cross-Module Hubs） */
+.dropdown-header {
+    color: #94a3b8 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 18px 4px !important;
+}
+
+/* ============================================= */
 /* 主要內容區 */
 .container {
     width: 100%;
@@ -134,6 +168,7 @@ body {
     flex: 1;
 }
 
+/* ============================================= */
 /* 公告區 */
 .announcement {
     background-color: #e8f4f8;
@@ -143,6 +178,7 @@ body {
     border-radius: 4px;
 }
 
+/* ============================================= */
 /* 介紹區 */
 .intro-section {
     margin: 40px 0;
@@ -156,6 +192,7 @@ body {
     border-bottom: 3px solid #3498db;
 }
 
+/* ============================================= */
 /* 表格樣式 */
 .table-section {
     margin: 40px 0;
@@ -200,6 +237,7 @@ body {
     text-decoration: underline;
 }
 
+/* ============================================= */
 /* 更新歷史 */
 .update-history {
     background-color: #f8f9fa;
@@ -227,6 +265,7 @@ body {
     font-size: 14px;
 }
 
+/* ============================================= */
 /* 頁尾 */
 .footer {
     background-color: #2c3e50;
@@ -236,6 +275,7 @@ body {
     margin-top: 60px;
 }
 
+/* ============================================= */
 /* 瀏覽頁面樣式 */
 .browse-container {
     display: none;
@@ -249,6 +289,7 @@ body {
     gap: 20px;
 }
 
+/* ============================================= */
 /* 左側篩選面板 */
 .filter-panel {
     width: 280px;
@@ -343,6 +384,7 @@ body {
     background-color: #7f8c8d;
 }
 
+/* ============================================= */
 /* 右側內容區 */
 .browse-content {
     flex: 1;
@@ -404,6 +446,7 @@ body {
     margin-left: 5px;
 }
 
+/* ============================================= */
 /* 頁面切換 */
 .page-content {
     display: block;
@@ -413,7 +456,7 @@ body {
     display: none;
 }
 
-
+/* ============================================= */
 /* Tooltip 標頭容器 */
 .tooltip-container {
     position: relative;
@@ -423,6 +466,7 @@ body {
     cursor: pointer;
 }
 
+/* ============================================= */
 /* ⓘ 圖示樣式 */
 .info-icon {
     display: inline-flex;
@@ -438,6 +482,7 @@ body {
     font-style: italic;
 }
 
+/* ============================================= */
 /* 浮動提示框 */
 .tooltip-box {
     visibility: hidden;
@@ -462,6 +507,7 @@ body {
     line-height: 1.5;
 }
 
+/* ============================================= */
 /* 提示框下方的小三角形箭頭 */
 .tooltip-box::after {
     content: "";
@@ -475,12 +521,14 @@ body {
     border-color: transparent transparent #1a202c transparent; 
 }
 
+/* ============================================= */
 /* Hover 時觸發顯示 */
 .tooltip-container:hover .tooltip-box {
     visibility: visible;
     opacity: 1;
 }
 
+/* ============================================= */
 /* 針對內容文字較多的 Tooltip 微調寬度與位置 */
 .tooltip-box.tooltip-box-wide {
     width: 280px;

@@ -21,22 +21,31 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </div>
             </li>
            <li class="nav-item">
-                <a class="nav-link <?= in_array($currentPage, ['analysis.php']) ? 'active' : '' ?>">Analysis ▼</a>
+                <a class="nav-link <?= strpos($currentPage, 'analysis') !== false ? 'active' : '' ?>">Analysis ▼</a>
                 <div class="dropdown-menu">
                     <div class="dropdown-submenu">
-                        <a class="dropdown-item" href="#">Glioma(GBM) »</a>
+                        <a class="dropdown-item" href="#">Glioma (GBM) »</a>
                         <div class="dropdown-menu sub-menu">
-                            <a class="dropdown-item" href="/analysis/Maximum_Expression.php">Maximum Expression</a>
-                            <a class="dropdown-item" href="/analysis/Molecular_Subtypes.php">Molecular Subtypes</a>
-                            <a class="dropdown-item" href="/analysis/Pathway_Analysis.php">Pathway Analysis</a>
-                            <a class="dropdown-item" href="/analysis/Stemness_Score.php">Stemness Score</a>
-                            <a class="dropdown-item" href="/analysis/Immune_Cell_Correlation.php">Immune Cell Correlation</a>
-                            
+                            <!-- 1. 全景關聯導航（放 ECharts/Cytoscape 網絡圖） -->
+                            <a class="dropdown-item font-weight-bold" href="/analysis/overview.php">★ Network Overview (全景網絡)</a>
+                            <div class="dropdown-divider"></div>
+
+                            <!-- 2. 四大主要維度 -->
+                            <a class="dropdown-item" href="/analysis/molecular_subtypes.php">Molecular Subtypes</a>
+                            <a class="dropdown-item" href="/analysis/immune_correlation.php">Immune Correlation</a>
+                            <a class="dropdown-item" href="/analysis/drug_response.php">Drug Response & Resistance</a>
+                            <a class="dropdown-item" href="/analysis/tumor_recurrence.php">Primary vs. Recurrent</a>
+
+                            <div class="dropdown-divider"></div>
+                            <!-- 3. 跨維度熱門分析（Cross-cutting Hubs） -->
+                            <a class="dropdown-item text-muted" style="font-size: 0.85em; pointer-events: none;">Cross-Module Hubs:</a>
+                            <a class="dropdown-item" href="/analysis/hypoxia_analysis.php">⠀⠀⠀↳ Hypoxia & Metabolism</a>
+                            <!-- <a class="dropdown-item" href="/analysis/hub_stemness.php">⠀⠀⠀↳ Stemness (GSC) Analysis</a> --> -->
+                            <!-- <a class="dropdown-item" href="/analysis/metabolite_detail.php">↳ Metabolite Detail</a> -->
                         </div>
                     </div>
-                    
-                    <a class="dropdown-item" href="#">file2</a>
-                    <a class="dropdown-item" href="#">file3</a>
+                    <a class="dropdown-item disabled" href="#">Disease 2</a>
+                    <a class="dropdown-item disabled" href="#">Disease 3</a>
                 </div>
             </li>
             <li class="nav-item">

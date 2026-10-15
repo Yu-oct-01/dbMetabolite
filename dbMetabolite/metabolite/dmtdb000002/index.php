@@ -1,14 +1,9 @@
 <?php
-// [AUTO-GENERATED-FROM-TEMPLATE] 此頁面由 generate_metabolite_pages.py 自動產生自共用模板；
-// 範本更新後重新執行批次模式（--update-existing）會被覆蓋更新。
-// 若要個別客製化此頁面，請改用單筆模式（--id/--file），
-// 該模式產生的頁面不含此標記，未來批次更新不會覆蓋它。
 // =============================================
-// metabolite/[DMTDB_ID]/index.php  —  代謝物個別頁面
+// metabolite/[DMTDB_ID]/index.php  —  代謝物個別頁面 (整合 Analysis 四大維度)
 // =============================================
 require_once '../../config.php';
 
-// 從 URL 路徑取得代謝物 ID（先剝離 query string，避免 ?FIELDS[0]=... 干擾）
 $uriPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $rawId   = trim(basename(rtrim($uriPath, '/')));
 $dmtdbId = strtoupper($rawId);
@@ -20,13 +15,10 @@ if ($dmtdbId === '' || $dmtdbId === '.') {
 
 $db = getDB();
 
-
-// 從clinical個別頁面進代謝物個別頁面-->讀取來源參數
+// 來源臨床病患判斷
 $fromClinical = isset($_GET['from']) && $_GET['from'] === 'clinical';
 $fromPatient  = '';
-
 if ($fromClinical && isset($_GET['patient'])) {
-    // 白名單驗證，只允許合法 Patient ID 格式
     $raw = $_GET['patient'];
     if (preg_match('/^[A-Za-z0-9\-]+$/', $raw)) {
         $fromPatient = $raw;
@@ -35,11 +27,9 @@ if ($fromClinical && isset($_GET['patient'])) {
     }
 }
 
-
-
-// ── 取得 metabolite_name 與 average_expression ───────────────
+// ── 1. 取得 metabolite_name 與 average_expression ───────────────
 $metaboliteName = '';
-$expressionData = [];   // ['PDC000546' => 1234.56, 'PDC000552' => 7890.12]
+$expressionData = [];
 $expressionTables = [
     'PDC000546' => 'cptac3_pdc000546_expressiondata_max',
     'PDC000552' => 'cptac3_pdc000552_expressiondata_max',
@@ -57,8 +47,8 @@ foreach ($expressionTables as $pdc => $eTbl) {
 }
 if ($metaboliteName === '') $metaboliteName = $dmtdbId;
 
-// ── 取得 Molecular Subtypes ───
-$molecularSubtypeData = []; // ['PDC000546' => ['subtype'=>..,'ssi'=>..,'PRONEURAL'=>..,'CLASSICAL'=>..,'MESENCHYMAL'=>..]]
+// ── 2. 取得 Molecular Subtypes ───
+$molecularSubtypeData = [];
 $molecularTables = [
     'PDC000546' => 'cptac3_pdc000546_metabolite_molecular',
     'PDC000552' => 'cptac3_pdc000552_metabolite_molecular',
@@ -83,8 +73,8 @@ foreach ($molecularTables as $pdc => $mTbl) {
     }
 }
 
-// ── 取得 Prognosis / Hazard Ratio ──
-$hazardRatioData = []; // ['PDC000546' => ['os_hazard_ratio'=>.., 'os_p_value'=>.., 'pfs_hazard_ratio'=>.., 'pfs_p_value'=>..]]
+// ── 3. 取得 Prognosis / Hazard Ratio ──
+$hazardRatioData = [];
 $hazardRatioTables = [
     'PDC000546' => 'cptac3_pdc000546_hazard_ratio_max',
     'PDC000552' => 'cptac3_pdc000552_hazard_ratio_max',
@@ -109,7 +99,7 @@ foreach ($hazardRatioTables as $pdc => $hTbl) {
     }
 }
 
-// ── 取得 external links（從 metabolites_id 取得）──────────
+// ── 4. 取得 external links ──────────
 $externalLinks = [];
 $linkStmt = $db->prepare("SELECT * FROM metabolites_id WHERE DMTDB_ID = ? LIMIT 1");
 $linkStmt->execute([$dmtdbId]);
@@ -129,23 +119,15 @@ if ($linkRow) {
     }
 }
 
-// ── index.php Synonyms 查詢 ──────────
+// ── 5. Synonyms 查詢 ──────────
 $synonyms = [];
 if ($linkRow && !empty($linkRow['HMDB_ID'])) {
-    // 改為直接撈取多列並明確指定排序，不使用 GROUP_CONCAT 避免特殊符號或長度截斷問題
-    $synStmt = $db->prepare(
-        "SELECT DISTINCT synonyms 
-         FROM hmdb_synonyms 
-         WHERE HMDB_ID = ? 
-         ORDER BY synonyms ASC"
-    );
+    $synStmt = $db->prepare("SELECT DISTINCT synonyms FROM hmdb_synonyms WHERE HMDB_ID = ? ORDER BY synonyms ASC");
     $synStmt->execute([$linkRow['HMDB_ID']]);
-    
-    // 直接將所有 rows 轉為一維陣列
     $synonyms = $synStmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
-// ── index.php Pathway 查詢 ──────────
+// ── 6. Pathway 查詢 ──────────
 $pathways = [];
 if ($linkRow && !empty($linkRow['KEGG_ID'])) {
     $keggId = $linkRow['KEGG_ID'];
@@ -160,15 +142,13 @@ if ($linkRow && !empty($linkRow['KEGG_ID'])) {
     $pathways = $pwStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// ── Back URL 決定邏輯 ──────────────────────────────────────────
+// ── 7. Back URL 邏輯 ──────────
 $backUrl = '/metabolites.php';
-
 if (!empty($_GET['back'])) {
     $decoded = urldecode($_GET['back']);
     $parsed  = parse_url($decoded);
     $path    = $parsed['path'] ?? '';
     if ($path === '' && isset($parsed['query'])) {
-        // back 只帶 query string（?diseases[]=...）
         $backUrl = '/clinicaldata.php?' . $parsed['query'];
     } elseif (preg_match('#^/clinicaldata\.php$#', $path)) {
         $safeQuery = isset($parsed['query']) ? '?' . $parsed['query'] : '';
@@ -177,13 +157,7 @@ if (!empty($_GET['back'])) {
 } elseif (!empty($_SERVER['HTTP_REFERER'])) {
     $ref     = $_SERVER['HTTP_REFERER'];
     $refPath = parse_url($ref, PHP_URL_PATH) ?? '';
-    $allowedPaths = [
-        '/metabolites.php',
-        '/search/results_name.php',
-        '/search/results_id.php',
-        '/search/results_pathway.php',
-        '/search/results_tme.php',
-    ];
+    $allowedPaths = ['/metabolites.php', '/search/results_name.php', '/search/results_id.php', '/search/results_pathway.php', '/search/results_tme.php'];
     foreach ($allowedPaths as $p) {
         if (str_starts_with($refPath, $p) || $refPath === $p) {
             $backUrl = $ref;
@@ -191,7 +165,15 @@ if (!empty($_GET['back'])) {
         }
     }
 }
+
+// 整理供 Analysis 連結使用的主要亞型與預後摘要
+$topSubtype = '-';
+if (!empty($molecularSubtypeData)) {
+    $firstPdc = array_key_first($molecularSubtypeData);
+    $topSubtype = $molecularSubtypeData[$firstPdc]['subtype'] ?? '-';
+}
 ?>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -201,6 +183,71 @@ if (!empty($_GET['back'])) {
     <link rel="stylesheet" href="../../css/metabolite.css">
     <link rel="stylesheet" href="../../css/pathway.css">
     <link rel="stylesheet" href="../../css/hazard_ratio.css">
+    <style>
+        /* 新增：跨維度分析模組樣式 */
+        .cross-analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 15px;
+        }
+        .cross-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border-top: 4px solid #adb5bd;
+        }
+        .cross-card.subtype { border-top-color: #0d6efd; }
+        .cross-card.immune  { border-top-color: #198754; }
+        .cross-card.drug    { border-top-color: #fd7e14; }
+        .cross-card.recurrent { border-top-color: #6f42c1; }
+        
+        .cross-card-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cross-card-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        .cross-card-desc {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+        .cross-link-btn {
+            display: inline-block;
+            text-align: center;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .cross-link-btn:hover {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #ffffff;
+        }
+    </style>
 </head>
 <body>
 
@@ -223,9 +270,10 @@ if (!empty($_GET['back'])) {
         </div>
     </div>
 
-    <!-- ── Tab 導覽列 ─────────────────────────── -->
+    <!-- ── Tab 導覽列（加入 Cross-Omics Analysis）─── -->
     <nav class="nav-tabs" id="metab-tabs">
-        <button class="tab active" data-target="sec-identification">Identification</button>
+        <button class="tab active" data-target="sec-cross-analysis">Multi-Omics Analysis</button>
+        <button class="tab"        data-target="sec-identification">Identification</button>
         <button class="tab"        data-target="sec-molecular">Molecular Subtypes</button>
         <button class="tab"        data-target="sec-prognosis">Prognosis</button>
         <button class="tab"        data-target="sec-metabolite">Metabolite Information</button>
@@ -240,12 +288,110 @@ if (!empty($_GET['back'])) {
         <!-- 左欄：主要資訊 -->
         <div class="content-main">
 
+            <!-- ★ 新增：四維度跨體學整合分析入口 (Cross-Module Multi-Omics Analysis) -->
+            <section id="sec-cross-analysis" class="section-block">
+                <div class="section-header">GBM Cross-Module Multi-Omics Landscape</div>
+                <div class="section-content">
+                    <p style="font-size: 13px; color: #64748b; margin-top: 0;">
+                        此代謝物在膠質母細胞瘤四大核心分析維度（分子亞型、微環境免疫、藥物反應、腫瘤復發）的表現與深入分析捷徑：
+                    </p>
+                    <div class="cross-analysis-grid">
+                        
+                        <!-- 1. 分子亞型 -->
+                        <div class="cross-card subtype">
+                            <div>
+                                <div class="cross-card-header">
+                                    <span>1. Molecular Subtypes</span>
+                                    <span style="color:#0d6efd;">● Subtype</span>
+                                </div>
+                                <div class="cross-card-value">
+                                    <?= htmlspecialchars($topSubtype) ?>
+                                </div>
+                                <div class="cross-card-desc">
+                                    檢視在 Classical, Mesenchymal 與 Proneural 間的顯著分佈與專一性指數 (SSI)。
+                                </div>
+                            </div>
+                            <a href="/analysis/Molecular_Subtypes.php?dmtdb_id=<?= urlencode($dmtdbId) ?>" class="cross-link-btn">
+                                前往分子亞型分析 &rarr;
+                            </a>
+                        </div>
+
+                        <!-- 2. 免疫反應 -->
+                        <div class="cross-card immune">
+                            <div>
+                                <div class="cross-card-header">
+                                    <span>2. Immune Microenvironment</span>
+                                    <span style="color:#198754;">● TME</span>
+                                </div>
+                                <div class="cross-card-value">TAMs / T-cells</div>
+                                <div class="cross-card-desc">
+                                    與腫瘤微環境抑制細胞（TAMs, Tregs）及免疫檢查點配體之相關性分析。
+                                </div>
+                            </div>
+                            <a href="/analysis/Immune_Cell_Correlation.php?dmtdb_id=<?= urlencode($dmtdbId) ?>" class="cross-link-btn">
+                                查看微環境免疫細胞關聯 &rarr;
+                            </a>
+                        </div>
+
+                        <!-- 3. 藥物與耐藥性 -->
+                        <div class="cross-card drug">
+                            <div>
+                                <div class="cross-card-header">
+                                    <span>3. Drug Response (TMZ)</span>
+                                    <span style="color:#fd7e14;">● Resistance</span>
+                                </div>
+                                <div class="cross-card-value">
+                                    <?php 
+                                        $osSummary = 'Data Pending';
+                                        if (!empty($hazardRatioData)) {
+                                            $firstH = reset($hazardRatioData);
+                                            $hr = $firstH['os_hazard_ratio'] ?? null;
+                                            $p = $firstH['os_p_value'] ?? null;
+                                            if ($p !== null && $p < 0.05) {
+                                                $osSummary = ($hr > 1) ? 'Risk Factor (p<0.05)' : 'Protective (p<0.05)';
+                                            } else {
+                                                $osSummary = 'Non-significant';
+                                            }
+                                        }
+                                        echo htmlspecialchars($osSummary);
+                                    ?>
+                                </div>
+                                <div class="cross-card-desc">
+                                    化療藥物 TMZ 臨床存活率 (OS/PFS) 關聯與缺氧/幹性對藥敏之影響。
+                                </div>
+                            </div>
+                            <a href="/analysis/Drug_Response.php?dmtdb_id=<?= urlencode($dmtdbId) ?>" class="cross-link-btn">
+                                前往 TMZ 敏感性存活分析 &rarr;
+                            </a>
+                        </div>
+
+                        <!-- 4. 腫瘤原發 vs. 復發 -->
+                        <div class="cross-card recurrent">
+                            <div>
+                                <div class="cross-card-header">
+                                    <span>4. Tumor Recurrence</span>
+                                    <span style="color:#6f42c1;">● PMT Transition</span>
+                                </div>
+                                <div class="cross-card-value">PMT & Progression</div>
+                                <div class="cross-card-desc">
+                                    配對樣本分析 Primary vs. Recurrent 動態變化及神經轉間質進展。
+                                </div>
+                            </div>
+                            <a href="/analysis/tumor_recurrence.php?dmtdb_id=<?= urlencode($dmtdbId) ?>" class="cross-link-btn">
+                                檢視原發/復發演化分析 &rarr;
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
             <!-- Identification -->
             <section id="sec-identification" class="section-block">
                 <div class="section-header">Identification</div>
                 <div class="section-content">
                     <table class="info-table">
-                        <tr><td>Common name</td>     <td></td></tr>
+                        <tr><td>Common name</td>     <td><?= htmlspecialchars($metaboliteName) ?></td></tr>
                         <tr><td>Chemical formula</td> <td></td></tr>
                         <?php if (!empty($expressionData)): ?>
                         <tr>
@@ -267,7 +413,7 @@ if (!empty($_GET['back'])) {
                 </div>
             </section>
 
-            <!-- Molecular Subtypes -->
+            <!-- Molecular Subtypes (原版保留) -->
             <section id="sec-molecular" class="section-block">
                 <div class="section-header">Molecular Subtypes</div>
                 <div class="section-content">
@@ -345,7 +491,7 @@ if (!empty($_GET['back'])) {
                 </div>
             </section>
 
-            <!-- Prognosis Information -->
+            <!-- Prognosis Information (原版保留) -->
             <section id="sec-prognosis" class="section-block">
                 <div class="section-header">Prognosis Information</div>
                 <div class="section-content">
@@ -430,7 +576,7 @@ if (!empty($_GET['back'])) {
         <aside class="content-sidebar">
 
             <!-- Synonyms -->
-            <div class="section-block">
+            <div class="section-block" id="sec-synonyms">
                 <div class="section-header">Synonyms</div>
                 <div class="section-content">
                     <?php if (!empty($synonyms)): ?>
@@ -457,7 +603,7 @@ if (!empty($_GET['back'])) {
                         <?php if (empty($externalLinks)): ?>
                             <li><span class="no-data">No external links available.</span></li>
                         <?php else: ?>
-                            <?php foreach ($externalLinks as $x): ?>
+                            <?php foreach ($externalLinks as$x): ?>
                                 <li>
                                     <a href="<?= $x['url'] ?>" target="_blank" rel="noopener">
                                         <?= $x['label'] ?> <span class="ext-source"><?= $x['source'] ?></span>
@@ -475,8 +621,7 @@ if (!empty($_GET['back'])) {
                 <div class="section-content">
                     <?php if (!empty($pathways) && !empty($linkRow['KEGG_ID'])): ?>
                         <div class="metab-pathway-tags">
-                            <?php foreach ($pathways as $pw): 
-                                $keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' . 
+                            <?php foreach ($pathways as $pw):$keggUrl = 'https://www.kegg.jp/kegg-bin/show_pathway?map=' . 
                                         htmlspecialchars($pw['pathway_id']) . 
                                         '&multi_query=' . 
                                         htmlspecialchars($linkRow['KEGG_ID']);
@@ -525,7 +670,7 @@ if (!empty($_GET['back'])) {
                     });
                 }
             });
-        }, { threshold: 0.4 });
+        }, { threshold: 0.25 });
         sections.forEach(function (s) { observer.observe(s); });
     }
 }());

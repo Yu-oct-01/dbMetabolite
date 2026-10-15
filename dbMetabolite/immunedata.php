@@ -204,7 +204,6 @@ function pageUrl(int $p): string {
     <div class="table-container show">
         <div class="table-header-actions">
             <a href="immunedata.php" class="btn-back">← Back to Selection</a>
-            <a href="analysis/Stemness_Score.php" class="btn-stemness">Stemness Score Analysis</a>
         </div>
 
         <?php if ($errorMsg): ?>

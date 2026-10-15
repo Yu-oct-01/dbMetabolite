@@ -186,7 +186,10 @@ function displayVal(?string $val): string {
         <div class="alert-danger" style="margin: 1.5rem 0;">
             Patient <strong><?= htmlspecialchars($patientId) ?></strong> was not found in the database.
         </div>
-        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
+        <!-- <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a> -->
+        <a href="javascript:history.back();" class="btn-back">
+                <i class="fa-solid fa-arrow-left me-1"></i>← Previous page
+        </a>
 
     <?php else: ?>
 
@@ -196,7 +199,10 @@ function displayVal(?string $val): string {
         </div>
 
         <!-- 返回按鈕 -->
-        <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a>
+        <!-- <a href="<?= $backUrlEscaped ?>" class="btn-back">← Back to Clinical Data</a> -->
+        <a href="javascript:history.back();" class="btn-back">
+                <i class="fa-solid fa-arrow-left me-1"></i>← Previous page
+        </a>
 
         <?php foreach ($fieldGroups as $groupName => $fields): ?>
         <div class="section-block">
