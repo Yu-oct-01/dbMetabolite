@@ -50,7 +50,7 @@
         <div class="col">
             <h4 class="fw-bold mb-1">GBM Multi-Omics Landscape</h4>
             <p class="text-muted small mb-0">
-                點擊或懸停節點以查看多維度關聯分析。黃色邊框標示為跨模組共享的關鍵節點（如 Hypoxia、TAMs、GSC、PTEN loss）[cite: 1, 2, 3, 4]。
+                點擊或懸停節點以查看多維度關聯分析。黃色邊框標示為跨模組共享的關鍵節點（如 Hypoxia、TAMs、GSC、PTEN loss）。
             </p>
         </div>
     </div>
@@ -70,7 +70,7 @@
                 <div class="mb-3">
                     <label class="form-label text-muted small fw-bold">生物機制與臨床意義</label>
                     <p class="text-secondary small" id="panel-desc">
-                        點擊左側網絡中的任一節點，查看該指標在「分子亞型」、「免疫反應」、「藥物治療」及／或「原發/復發進展」間的跨維度連結與分析入口[cite: 1, 2, 3, 4]。
+                        點擊左側網絡中的任一節點，查看該指標在「分子亞型」、「免疫反應」、「藥物治療」及／或「原發/復發進展」間的跨維度連結與分析入口。
                     </p>
                 </div>
                 <div class="mb-3">

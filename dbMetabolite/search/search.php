@@ -67,7 +67,7 @@ ini_set('display_errors', 1);
         <label style="display:block; margin-bottom:10px; font-weight:600;">Select a Category</label>
         <div style="display:flex; gap:20px; margin-bottom:15px;">
             <label><input type="radio" name="info_field" value="pathway"> Pathway</label>
-            <label><input type="radio" name="info_field" value="tme"> Tumor Microenvironment</label>
+            <!-- <label><input type="radio" name="info_field" value="tme"> Tumor Microenvironment</label> -->
         </div>
         <div style="display:flex; gap:10px;">
             <button type="button" class="btn btn-primary" onclick="goToInfoSearch()">Search</button>

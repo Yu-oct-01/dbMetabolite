@@ -17,6 +17,10 @@ $allFields = [
     'CLASSICAL'                                 => 'Classical',
     'MESENCHYMAL'                               => 'Mesenchymal',
     'molecular subtype'                         => 'Molecular Subtype',
+    'Macrophage M2'                             => 'Macrophage M2',
+    'Tregs'                                     => 'T Regulatory Cells（Tregs)',
+    'Perivascular_Score'                        => 'Perivascular Score',
+    'MDSCs_Score'                               => 'MDSCs Score',
     'immune score'                              => 'Immune Score',
     'stroma score'                              => 'Stroma Score',
     'microenvironment score'                    => 'Microenvironment Score',
@@ -35,6 +39,10 @@ $existingCols = [
     'CLASSICAL'                                 => 'CLASSICAL',
     'MESENCHYMAL'                               => 'MESENCHYMAL',
     'molecular subtype'                         => 'MolecularSubtype',
+    'Macrophage M2'                             => 'Macrophage M2',
+    'Tregs'                                     => 'Tregs',
+    'Perivascular_Score'                        => 'Perivascular_Score',
+    'MDSCs_Score'                               => 'MDSCs_Score',
     'immune score'                              => 'immune score',
     'stroma score'                              => 'stroma score',
     'microenvironment score'                    => 'microenvironment score',
@@ -43,13 +51,22 @@ $existingCols = [
 // 疾病選項（勾選用，比照 clinicaldata.php）
 $diseaseOptions = [
     'glioma(gbm)' => 'Glioma(GBM)',
-    'others'      => 'Others',
+    'disease2' => 'Disease2',
+    'disease3' => 'Disease3',
 ];
 
 // 疾病 key → 免疫資料表名稱
 $diseaseImmuneTableMap = [
     'glioma(gbm)' => 'gbm_immune_data',
     // 'others'   => 'others_immune_data',
+];
+
+// 這四個欄位改從 gbm_immune_data2 取值
+$table2Fields = ['Macrophage M2', 'Tregs', 'Perivascular_Score', 'MDSCs_Score'];
+
+// 疾病 key → 第二張免疫資料表（用 Patient_ID 對應 Case ID）
+$diseaseImmuneTable2Map = [
+    'glioma(gbm)' => 'gbm_immune_data2',
 ];
 
 // 固定顯示的主鍵欄位（gbm_immune_data 的主鍵是 Case ID）
@@ -83,23 +100,27 @@ if (!empty($_GET['diseases'])) {
     } else {
         $db = getDB();
 
-        // 組合要 SELECT 的欄位
-        $selectCols = [$primaryKey];
+        // 組合要 SELECT 的欄位（t1 = gbm_immune_data，t2 = gbm_immune_data2）
+        $selectCols = ["t1.`$primaryKey`"];
         foreach ($selectedFields as $f) {
-            if (isset($existingCols[$f])) {
-                $selectCols[] = $existingCols[$f];
-            }
+            if (!isset($existingCols[$f])) continue;
+            $c     = $existingCols[$f];
+            $alias = in_array($f, $table2Fields, true) ? 't2' : 't1';
+            $selectCols[] = "$alias.`$c` AS `$c`";
         }
-        $selectCols = array_unique($selectCols);
-        $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
+        $colsSql = implode(', ', array_unique($selectCols));
 
         // 組合 UNION：每個選定的疾病各自對應一張免疫資料表，並注入固定的疾病名稱欄位
         $unionParts = [];
         foreach ($diseases as $d) {
             if (!isset($diseaseImmuneTableMap[$d])) continue; // 該疾病尚未有免疫資料表，先略過
             $tbl          = $diseaseImmuneTableMap[$d];
+            $tbl2         = $diseaseImmuneTable2Map[$d] ?? null;
             $diseaseLabel = addslashes($diseaseOptions[$d] ?? $d);
-            $unionParts[] = "SELECT $colsSql, '$diseaseLabel' AS `_disease` FROM `$tbl`";
+            $join         = $tbl2
+                ? "LEFT JOIN `$tbl2` AS t2 ON t2.`Patient_ID` = t1.`$primaryKey`"
+                : '';
+            $unionParts[] = "SELECT $colsSql, '$diseaseLabel' AS `_disease` FROM `$tbl` AS t1 $join";
         }
 
         if (empty($unionParts)) {

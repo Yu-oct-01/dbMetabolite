@@ -68,7 +68,11 @@ $fieldGroups = [
         'IVANOVA_HEMATOPOIESIS_STEM_CELL_LONG_TERM',
         'Hallmark Hypoxia',
     ],
-    'ESTIMATE Scores' => [
+    'Immune & Microenvironment Scores' => [
+        'Macrophage M2',
+        'Tregs',
+        'Perivascular_Score',
+        'MDSCs_Score',
         'Immune Score',
         'Stroma Score',
         'Microenvironment Score',
@@ -109,6 +113,18 @@ $immuneResult = $immuneStmt->fetch(PDO::FETCH_ASSOC);
 
 if ($immuneResult) {
     $immuneRow = $immuneResult;
+}
+
+// ── gbm_immune_data2 查詢（Macrophage M2、Tregs、Perivascular_Score、MDSCs_Score）──
+$immune2Row  = null;
+$immune2Stmt = $db->prepare(
+    "SELECT * FROM `gbm_immune_data2` WHERE `Patient_ID` = ? LIMIT 1"
+);
+$immune2Stmt->execute([$patientId]);
+$immune2Result = $immune2Stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($immune2Result) {
+    $immune2Row = $immune2Result;
 }
 
 // ── 代謝物表達量查詢 ──────────────────────────────────────────
@@ -229,7 +245,12 @@ function displayVal(?string $val): string {
                                 'Microenvironment Score'                    => 'microenvironment score'
                             ];
 
-                            if (array_key_exists($field, $immuneFieldsMapping)) {
+                            // 這四個欄位來自 gbm_immune_data2
+                            $immune2Fields = ['Macrophage M2', 'Tregs', 'Perivascular_Score', 'MDSCs_Score'];
+
+                            if (in_array($field, $immune2Fields, true)) {
+                                echo displayVal(isset($immune2Row[$field]) ? (string)$immune2Row[$field] : null);
+                            } elseif (array_key_exists($field, $immuneFieldsMapping)) {
                                 $dbCol = $immuneFieldsMapping[$field];
                                 echo displayVal($immuneRow[$dbCol] ?? null);
                             } else {
@@ -267,10 +288,13 @@ function displayVal(?string $val): string {
                 <?php endif; ?>
             </div>
         </div>
-
     <?php endif; ?>
-
 </div>
+
+<!-- 右下角浮動按鈕 -->
+<a href="/analysis/molecular_subtypes.php" class="floating-analysis-btn">
+    Molecular Subtypes Analysis →
+</a>
 
 <?php include BASE_PATH . 'includes/footer.php'; ?>
 

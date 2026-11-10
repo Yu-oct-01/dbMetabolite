@@ -157,3 +157,40 @@
     padding: 2px 10px;
     border-radius: 20px;
 }
+
+/* 右下角固定按鈕：前往 Molecular Subtypes 分析頁 */
+.floating-analysis-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background-color: #2c6fbb;      /* 可改成你網站的主色 */
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.floating-analysis-btn:hover {
+    background-color: #1f5594;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* 手機版縮小一點 */
+@media (max-width: 576px) {
+    .floating-analysis-btn {
+        right: 14px;
+        bottom: 14px;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+    }
+}

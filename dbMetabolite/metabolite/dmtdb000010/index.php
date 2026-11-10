@@ -245,8 +245,8 @@ if (!empty($_GET['back'])) {
                 <div class="section-header">Identification</div>
                 <div class="section-content">
                     <table class="info-table">
-                        <tr><td>Common name</td>     <td></td></tr>
-                        <tr><td>Chemical formula</td> <td></td></tr>
+                        <tr><td>Common name</td>     <td>serotonin</td></tr>
+                        <tr><td>Chemical formula</td> <td>C<sub>10</sub>H<sub>12</sub>N<sub>2</sub>O</td></tr>
                         <?php if (!empty($expressionData)): ?>
                         <tr>
                             <td>Maximum Expression</td>
@@ -258,11 +258,11 @@ if (!empty($_GET['back'])) {
                         </tr>
                         <?php endif; ?>
 
-                        <tr><td>IUPAC name</td>       <td></td></tr>
-                        <tr><td>SMILES</td>           <td></td></tr>
-                        <tr><td>InChI Identifier</td> <td></td></tr>
-                        <tr><td>InChIKey</td>         <td></td></tr>
-                        <tr><td>Description</td>      <td></td></tr>
+                        <tr><td>IUPAC name</td>       <td>3-(2-aminoethyl)-1H-indol-5-ol</td></tr>
+                        <tr><td>SMILES</td>           <td>NCCC1=CNC2=C1C=C(O)C=C2</td></tr>
+                        <tr><td>InChI Identifier</td> <td>InChI=1S/C10H12N2O/c11-4-3-7-6-12-10-2-1-8(13)5-9(7)10/h1-2,5-6,12-13H,3-4,11H2</td></tr>
+                        <tr><td>InChIKey</td>         <td>QZAYGJVTTNCVMB-UHFFFAOYSA-N</td></tr>
+                        <tr><td>Description</td>      <td>Chemically known as 5-Hydroxytryptamine (5-HT), is an extremely important monoamine neurotransmitter. It plays the role of a 'mood regulator' in the human body and is widely distributed in the central nervous system, gastrointestinal tract, and blood (platelets).</td></tr>
                     </table>
                 </div>
             </section>

@@ -10,23 +10,10 @@
 \f1\b0  
 \f0\b TABLE
 \f1\b0  `
-\f2 gbm_metabolite_pathway_correlation_coefficient
+\f2 gbm_immune_data2
 \f1 ` (\
 `
-\f2 metabolite_name
-\f1 ` 
-\f0\b VARCHAR
-\f1\b0 (400) 
-\f0\b NULL
-\f1\b0  
-\f0\b DEFAULT
-\f1\b0  
-\f0\b NULL
-\f1\b0  
-\f0\b COLLATE 
-\f1\b0 'utf8mb4_0900_ai_ci',\
-`
-\f2 pathway_id
+\f2 Patient_ID
 \f1 ` 
 \f0\b VARCHAR
 \f1\b0 (50) 
@@ -37,80 +24,46 @@
 \f0\b COLLATE
 \f1\b0  'utf8mb4_0900_ai_ci',\
 `
-\f2 r_meta
+\f2 Macrophage M2
 \f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
 \f1\b0 `
-\f2 p_meta
+\f2 Tregs
 \f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `fdr_meta` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `
-\f2 k_studies
-\f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-
-\f1\b0 `
-\f2 total_n
-\f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `
-\f2 Q_heterogeneity
-\f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `
-\f2 I2_percent
-\f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `
-\f2 p_heterogeneity
-\f1 ` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `
-\f0\b direction_consistent
-\f1\b0 ` 
 \f0\b VARCHAR
-\f1\b0 (100) 
-\f0\b NULL
-\f1\b0  
-\f0\b DEFAULT
-\f1\b0  
-\f0\b NULL
-\f1\b0  
-\f0\b COLLATE 
-\f1\b0 'utf8mb4_0900_ai_ci',
+\f1\b0 (50)
+\f0\b  NULL DEFAULT NULL COLLATE
+\f1\b0  'utf8mb4_0900_ai_ci',
 \f0\b \
 
-\f1\b0 `correlation_546` 
+\f1\b0 `Pericyte_Score` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
-\f1\b0 `n_546` 
+\f1\b0 `
+\f2 Smooth_muscle_Score
+\f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
-\f1\b0 `p_value_546` 
+\f1\b0 `
+\f2 Perivascular_Score
+\f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
-\f1\b0 `correlation_552` 
+\f1\b0 `
+\f2 G_MDSC_Score
+\f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
-\f1\b0 `n_552` 
+\f1\b0 `
+\f2 Tumor_Associated_MDSC_Score
+\f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL,\
 
-\f1\b0 `p_value_552` 
-\f0\b DOUBLE NULL DEFAULT NULL,\
-
-\f1\b0 `se_meta` 
+\f1\b0 `
+\f2 MDSCs_Score
+\f1 ` 
 \f0\b DOUBLE NULL DEFAULT NULL\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
 \f1\b0 )\
 

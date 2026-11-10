@@ -40,7 +40,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                             <!-- 3. 跨維度熱門分析（Cross-cutting Hubs） -->
                             <a class="dropdown-item text-muted" style="font-size: 0.85em; pointer-events: none;">Cross-Module Hubs:</a>
                             <a class="dropdown-item" href="/analysis/hypoxia_analysis.php">⠀⠀⠀↳ Hypoxia & Metabolism</a>
-                            <!-- <a class="dropdown-item" href="/analysis/hub_stemness.php">⠀⠀⠀↳ Stemness (GSC) Analysis</a> --> -->
+                            <!-- <a class="dropdown-item" href="/analysis/hub_stemness.php">⠀⠀⠀↳ Stemness (GSC) Analysis</a> -->
                             <!-- <a class="dropdown-item" href="/analysis/metabolite_detail.php">↳ Metabolite Detail</a> -->
                         </div>
                     </div>

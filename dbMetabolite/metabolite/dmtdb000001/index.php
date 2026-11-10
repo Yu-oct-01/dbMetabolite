@@ -261,7 +261,7 @@ if (!empty($_GET['back'])) {
                         <tr><td>SMILES</td>           <td>C1=CC=C(C=C1)C1=CC=CC=C1</td></tr>
                         <tr><td>InChI Identifier</td> <td>InChI=1S/C12H10/c1-3-7-11(8-4-1)12-9-5-2-6-10-12/h1-10H</td></tr>
                         <tr><td>InChIKey</td>         <td>ZUOUZKKEUPVFJK-UHFFFAOYSA-N</td></tr>
-                        <tr><td>Description</td>      <td>聯苯是一種由兩個苯環通過單鍵連接而成的芳香烴。<br>來源： 常見於防腐劑(如柑橘類水果的防黴劑)、染料中間體，以及多氯聯苯(PCBs)降解後的殘留物。</td></tr>
+                        <tr><td>Description</td>      <td>Biphenyl is an aromatic hydrocarbon composed of two benzene rings connected by a single bond. Source: Commonly found in preservatives (such as anti-mold agents for citrus fruits), dye intermediates, and residues from the degradation of polychlorinated biphenyls (PCBs).</td></tr>
                     </table>
                 </div>
             </section>

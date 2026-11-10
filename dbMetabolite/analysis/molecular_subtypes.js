@@ -8,21 +8,27 @@ const targetOptionsMap = {
         { value: "p1", text: "動態細胞狀態" },
     ],
     "mutation": [ // 基因體變異與體細胞突變
-        { value: "g1", text: "酪胺酸激酶受體 (RTK) 異常" },
-        { value: "g2", text: "NF1 缺失與失活" },
-        { value: "g3", text: "PTEN 缺失" }
+        { value: "onco_all", text: "All subtypes" },
+        { value: "onco_pn",  text: "Proneural" },
+        { value: "onco_cl",  text: "Classical" },
+        { value: "onco_mes", text: "Mesenchymal" }
     ],
     "microenvironment": [ // 腫瘤微環境
-        { value: "tme1", text: "缺氧(Hypoxia）" },
-        { value: "tme2", text: "骨髓源性抑制細胞(MDSCs)、調節性 T 細胞（Tregs）" },
-        { value: "tme3", text: "血管周圍 (Perivascular)" },
-        { value: "tme4", text: "巨噬細胞/小膠質細胞(TAMs)" },
-        { value: "tme5", text: "細胞外基質(ECM)" }
+        { value: "tme1", text: "Hypoxia" },
+        { value: "tme2", text: "Stroma" },
+        { value: "tme3", text: "Perivascular" },
+        { value: "tme4", text: "Macrophage M2" },
+        { value: "tme5", text: "T Regulatory Cells（Tregs)" },
+        { value: "tme6", text: "MDSCs" }
     ]
 };
 
 const categorySelect = document.getElementById("metabolite-select");
 const targetSelect = document.getElementById("strat-select");
+const boxplotToggle = document.getElementById("boxplot-toggle");
+const geneSelect = document.getElementById("gene-select");
+let mutKmToken = 0;   // 防止快速切換時舊結果覆蓋新畫面
+let currentBoxplotData = [];   // 暫存目前這張圖的 boxplot 統計數據
 
 // 模組卡片樣式
 const MODULE_STYLE = {
@@ -56,89 +62,83 @@ const targetConfig = {
             { type: 'subtypes',    url: '/analysis/hub_hypoxia.php?from=subtypes', title: '...', desc: '。。。' }
         ]
     },
-    g1: {
-        field: null, title: '基因變異：RTK 異常 (EGFR / PDGFRA)',
-        modules: [
-            { type: 'drug', url: '/analysis/Drug_Response.php?driver=EGFR', title: '...', desc: '。。。' }
-        ]
-    },
-    g2: {
-        field: null, title: '基因變異：NF1 缺失與失活',
-        modules: [
-            { type: 'immunity', url: '/analysis/Immune_Cell_Correlation.php?subtype=MES&cell=TAMs', title: '...', desc: '。。。' },
-            { type: 'drug',     url: '/analysis/Drug_Response.php?driver=NF1', title: '...', desc: '。。。' }
-        ]
-    },
-    g3: {
-        field: null, title: '基因變異：PTEN 缺失',
-        modules: [
-            { type: 'drug', url: '/analysis/Drug_Response.php?driver=EGFR_PTEN', title: '...', desc: '。。。' }
-        ]
-    },
+    onco_all: { field: null, oncoSubtype: 'ALL',         title: 'Oncoplot：All subtypes',
+                insight: 'All cohort top 15 mutated genes.' },
+    onco_pn:  { field: null, oncoSubtype: 'Proneural',   title: 'Oncoplot：Proneural',
+                insight: 'Proneural Top 15 mutated genes.' },
+    onco_cl:  { field: null, oncoSubtype: 'Classical',   title: 'Oncoplot：Classical',
+                insight: 'Classical Top 15 mutated genes.' },
+    onco_mes: { field: null, oncoSubtype: 'Mesenchymal', title: 'Oncoplot：Mesenchymal',
+                insight: 'Mesenchymal Top 15 mutated genes.' },
     tme1: {
         field: 'HALLMARK_HYPOXIA',
-        title: 'Hypoxia scatter plot across different molecular subtypes',
+        title: 'Hypoxia Box plot + Jittered points across different molecular subtypes',
         yName: 'HALLMARK_HYPOXIA', yMin: 0.6,
         kmLabel: 'Hypoxia',
-        insight: `
-            <ul class="mb-0 ps-3 lh-base" style="font-size: 0.9rem;">
-                <li class="mb-2">
-                    <strong class="text-primary">Mesenchymal 亞型整體處於高缺氧狀態：</strong>
-                    圖中 Mesenchymal 亞型的 HALLMARK_HYPOXIA 分數幾乎全數集中在 0.88 以上的高區間，整體中位數與下限明顯高於其他兩組，證實 Mesenchymal 亞型與低氧微環境有極高關聯。
-                </li>
-                <li class="mb-2">
-                    <strong class="text-primary">Proneural 亞型低氧分布最廣且下限最低：</strong>
-                    Proneural 亞型有較多樣本分布在 0.70～0.85 的較低缺氧區間，符合「典型的 Proneural 腫瘤常處於較低缺氧或對極端低氧承受力較弱」的宏觀趨勢。
-                </li>
-            </ul>
-        `,
-        modules: [
-            { type: 'immunity', url: '/analysis/immune_correlation.php?subtype=MES&cell=TAMs', title: '低氧與免疫抑制', desc: '低氧抑制免疫細胞活性，並促進免疫抑制微環境的形成。' },
-            { type: 'drug',     url: '/analysis/Drug_Response.php?driver=EGFR_PTEN', title: '低氧與藥物耐受性', desc: '低氧區域缺乏氧分子作為放射敏化劑，放療破壞力大幅降低。' },
-            { type: 'recurrence', url: '/analysis/tumor_recurrence.php?transition=PMT', title: '低氧與腫瘤再生', desc: '低氧能維持 GSCs 處於低增殖但高耐受的狀態，在放化療結束後重新甦醒並啟動腫瘤再生。' }
-        ]
+        // insight: `
+        //     <ul class="mb-0 ps-3 lh-base" style="font-size: 0.9rem;">
+        //         <li class="mb-2">
+        //             <strong class="text-primary">Mesenchymal 亞型整體處於高缺氧狀態：</strong>
+        //             圖中 Mesenchymal 亞型的 HALLMARK_HYPOXIA 分數幾乎全數集中在 0.88 以上的高區間，整體中位數與下限明顯高於其他兩組，證實 Mesenchymal 亞型與低氧微環境有極高關聯。
+        //         </li>
+        //         <li class="mb-2">
+        //             <strong class="text-primary">Proneural 亞型低氧分布最廣且下限最低：</strong>
+        //             Proneural 亞型有較多樣本分布在 0.70～0.85 的較低缺氧區間，符合「典型的 Proneural 腫瘤常處於較低缺氧或對極端低氧承受力較弱」的宏觀趨勢。
+        //         </li>
+        //     </ul>
+        // `,
+        // modules: [
+        //     { type: 'immunity', url: '/analysis/immune_correlation.php?subtype=MES&cell=TAMs', title: '低氧與免疫抑制', desc: '低氧抑制免疫細胞活性，並促進免疫抑制微環境的形成。' },
+        //     { type: 'drug',     url: '/analysis/Drug_Response.php?driver=EGFR_PTEN', title: '低氧與藥物耐受性', desc: '低氧區域缺乏氧分子作為放射敏化劑，放療破壞力大幅降低。' },
+        //     { type: 'recurrence', url: '/analysis/tumor_recurrence.php?transition=PMT', title: '低氧與腫瘤再生', desc: '低氧能維持 GSCs 處於低增殖但高耐受的狀態，在放化療結束後重新甦醒並啟動腫瘤再生。' }
+        // ]
     },
     tme2: {
-        field: null, title: '腫瘤微環境：MDSCs / Tregs',
-        modules: [
-            { type: 'immunity', url: '/analysis/Immune_Cell_Correlation.php?cell=MDSC_Treg', title: '...', desc: '。。。' }
-        ]
-    },
-    tme3: {
-        field: null, title: '腫瘤微環境：血管周圍 (Perivascular)',
-        modules: [
-            { type: 'subtypes', url: '/analysis/hub_subtypes.php?from=perivascular', title: '...', desc: '。。。'},
-            { type: 'drug',    url: '/analysis/Drug_Response.php?niche=perivascular', title: '...', desc: '。。。' }
-        ]
-    },
-    tme4: {
-        field: null, title: '腫瘤微環境：巨噬細胞 / 小膠質細胞 (TAMs)',
-        modules: [
-            { type: 'immunity', url: '/analysis/Immune_Cell_Correlation.php?subtype=MES&cell=TAMs', title: '...', desc: '。。。' }
-        ]
-    },
-    tme5: {
         field: 'stroma score',
-        title: 'Stroma score scatter plot across different molecular subtypes',
+        title: 'Stroma score Box plot + Jittered points across different molecular subtypes',
         yName: 'Stroma score', yMin: -0.03,
         kmLabel: 'Stroma',
-        insight: `
-            <ul class="mb-0 ps-3 lh-base" style="font-size: 0.9rem;">
-                <li class="mb-2">
-                    <strong class="text-primary">Mesenchymal 亞型整體偏向擁有較高基質分數：</strong>
-                    圖中 Mesenchymal 亞型的點的分佈在方較為分散，中高分數（0.04 至 0.12）的樣本佔比明顯高於 Proneural，整體重心中位數在三者中偏高，能推測與較高的發炎反應、血管新生及基質細胞浸潤相關。
-                </li>
-                <li class="mb-2">
-                    <strong class="text-primary">Proneural 亞型整體中位數在三組中偏低：</strong>
-                    Proneural 亞型大部分樣本集中在低分數區間（約 0.00 至 0.04），可能代表較為內因性、神經元前驅特徵的腫瘤。
-                </li>
-            </ul>
-        `,
-        modules: [
-            { type: 'immunity',   url: '/analysis/Immune_Cell_Correlation.php?view=ecm', title: '腫瘤與活化基質細胞', desc: '厚重的基質屏障使 CD8+ T 細胞在穿透基質時受到物理阻礙，大多被困在腫瘤外圍基質帶。' },
-            { type: 'drug',       url: '/analysis/Drug_Response.php?driver=EGFR_PTEN', title: '化療遞送屏障與放化療耐受', desc: '高 IFP 阻礙了小分子化療藥物的有效擴散與穿透，而細胞黏附介導的耐藥性會上調抗凋亡蛋白，並賦予細胞抵抗失巢凋亡（Anoikis）的能力' },
-            { type: 'recurrence', url: '/analysis/tumor_recurrence.php?transition=PMT', title: '細胞外基質與腫瘤幹細胞', desc: '特殊的 ECM 微結構為腫瘤幹細胞提供了穩定的物理庇護。' }
-        ]
+        // insight: `
+        //     <ul class="mb-0 ps-3 lh-base" style="font-size: 0.9rem;">
+        //         <li class="mb-2">
+        //             <strong class="text-primary">Mesenchymal 亞型整體偏向擁有較高基質分數：</strong>
+        //             圖中 Mesenchymal 亞型的點的分佈在方較為分散，中高分數（0.04 至 0.12）的樣本佔比明顯高於 Proneural，整體重心中位數在三者中偏高，能推測與較高的發炎反應、血管新生及基質細胞浸潤相關。
+        //         </li>
+        //         <li class="mb-2">
+        //             <strong class="text-primary">Proneural 亞型整體中位數在三組中偏低：</strong>
+        //             Proneural 亞型大部分樣本集中在低分數區間（約 0.00 至 0.04），可能代表較為內因性、神經元前驅特徵的腫瘤。
+        //         </li>
+        //     </ul>
+        // `,
+        // modules: [
+        //     { type: 'immunity',   url: '/analysis/Immune_Cell_Correlation.php?view=ecm', title: '腫瘤與活化基質細胞', desc: '厚重的基質屏障使 CD8+ T 細胞在穿透基質時受到物理阻礙，大多被困在腫瘤外圍基質帶。' },
+        //     { type: 'drug',       url: '/analysis/Drug_Response.php?driver=EGFR_PTEN', title: '化療遞送屏障與放化療耐受', desc: '高 IFP 阻礙了小分子化療藥物的有效擴散與穿透，而細胞黏附介導的耐藥性會上調抗凋亡蛋白，並賦予細胞抵抗失巢凋亡（Anoikis）的能力' },
+        //     { type: 'recurrence', url: '/analysis/tumor_recurrence.php?transition=PMT', title: '細胞外基質與腫瘤幹細胞', desc: '特殊的 ECM 微結構為腫瘤幹細胞提供了穩定的物理庇護。' }
+        // ]
+    },
+    tme3: {
+        field: 'Perivascular_Score',
+        title: 'Perivascular score Box plot + Jittered points across different molecular subtypes',
+        yName: 'Perivascular score', yMin: -3,
+        kmLabel: 'Perivascular',
+    },
+    tme4: {
+        field: 'Macrophage_M2',
+        title: 'Macrophage M2 Box plot + Jittered points across different molecular subtypes',
+        yName: 'Macrophage M2', yMin: -0.01,
+        kmLabel: 'M2',
+    },
+    tme5: {
+        field: 'Tregs',
+        title: 'Tregs Box plot + Jittered points across different molecular subtypes',
+        yName: 'Tregs', yMin: -0.005,
+        kmLabel: 'Tregs',
+    },
+    tme6: {
+        field: 'MDSCs_Score',
+        title: 'MDSCs score Box plot + Jittered points across different molecular subtypes',
+        yName: 'MDSCs score', yMin: -1.6,
+        kmLabel: 'MDSCs',
     }
 };
 
@@ -173,11 +173,92 @@ function updateTargetOptions() {
     targetSelect.innerHTML = options
         .map(opt => `<option value="${opt.value}">${opt.text}</option>`)
         .join("");
+
+    // 只有 Gene Mutation 才顯示基因選單
+    document.getElementById('gene-wrap').style.display = (selectedCategory === 'mutation') ? 'flex' : 'none';
 }
 
 // 初始化 ECharts 圖表
 const chartDom = document.getElementById('subtype-chart');
 const myChart = echarts.init(chartDom);
+
+// ===== KM 圖：三個亞型各一個 chart =====
+const kmSubtypes = ['PRONEURAL', 'CLASSICAL', 'MESENCHYMAL'];
+const kmCharts = {};
+function getKMChart(sub) {
+    if (!kmCharts[sub]) kmCharts[sub] = echarts.init(document.getElementById('km-' + sub));
+    return kmCharts[sub];
+}
+
+
+function showView(mode) {   // 'scatter' | 'placeholder' | 'km' | 'onco'
+    const showChart = (mode === 'scatter' || mode === 'placeholder');
+    document.getElementById('subtype-chart').style.display = showChart ? 'block' : 'none';
+    document.getElementById('boxplot-toggle-wrap').style.display = (mode === 'scatter') ? 'flex' : 'none';   // 只有散布圖才顯示
+    document.getElementById('km-charts').style.display    = (mode === 'km') ? 'block' : 'none';
+    document.getElementById('oncoplot-wrap').style.display = (mode === 'onco') ? 'block' : 'none';
+    if (showChart) myChart.resize();
+}
+
+// 新增：載入 Oncoplot
+function renderOncoplot(cfg) {
+    mutKmToken++;
+    showView('onco');
+    const img = document.getElementById('oncoplot-img');
+    const loading = document.getElementById('oncoplot-loading');
+    const err = document.getElementById('oncoplot-error');
+
+    img.style.display = 'none';
+    err.style.display = 'none';
+    loading.style.display = 'block';
+
+    img.onload = () => { loading.style.display = 'none'; img.style.display = 'inline-block'; };
+    img.onerror = () => {
+        loading.style.display = 'none';
+        err.style.display = 'block';
+        err.textContent = 'Oncoplot 產生失敗，請檢查 oncoplot.php 與 Rscript 路徑。';
+    };
+    img.src = 'oncoplot.php?subtype=' + encodeURIComponent(cfg.oncoSubtype);
+
+    renderModules(cfg);
+    document.querySelector('.badge.bg-secondary').innerText = 'Oncoplot (maftools)';
+    document.getElementById('insight-text').innerHTML = cfg.insight || '';
+}
+
+async function renderMutationKM(cfg) {
+    const token = ++mutKmToken;
+    const gene = geneSelect.value;
+    const img = document.getElementById('oncoplot-img');
+    const loading = document.getElementById('oncoplot-loading');
+    const err = document.getElementById('oncoplot-error');
+
+    showView('onco');
+    img.style.display = 'none';
+    err.style.display = 'none';
+    loading.style.display = 'block';
+
+    const subLabel = cfg.oncoSubtype === 'ALL' ? 'All subtypes' : cfg.oncoSubtype;
+    document.querySelector('.badge.bg-secondary').innerText = 'Log-rank / Cox';
+
+    try {
+        const res = await fetch(`mutation_survival.php?gene=${encodeURIComponent(gene)}&subtype=${encodeURIComponent(cfg.oncoSubtype)}`);
+        if (token !== mutKmToken) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        const blob = await res.blob();
+        if (token !== mutKmToken) return;
+
+        img.onload = () => { loading.style.display = 'none'; img.style.display = 'inline-block'; };
+        img.src = URL.createObjectURL(blob);
+        document.getElementById('insight-text').innerHTML =
+            `<strong>${gene}</strong> 突變 vs 野生型的整體存活分析（${subLabel}）。`;
+    } catch (e) {
+        if (token !== mutKmToken) return;
+        loading.style.display = 'none';
+        err.style.display = 'block';
+        err.textContent = e.message || '分析失敗';
+    }
+}
 
 function renderSubtypeChart(cfg) {
     myChart.clear();   // 從 KM 圖或提示畫面切回來時需要先清空
@@ -214,6 +295,7 @@ function renderSubtypeChart(cfg) {
         
         return [min, q1, median, q3, max];
     });
+    currentBoxplotData = boxplotData;
 
     const option = {
         title: {
@@ -227,16 +309,16 @@ function renderSubtypeChart(cfg) {
             formatter: (params) => {
                 if (params.seriesType === 'boxplot') {
                     const [min, q1, median, q3, max] = params.data.slice(1);
-                    return `<strong>${params.name} 亞型統計</strong><br/>` +
-                           `最大值 (Max): ${max.toFixed(4)}<br/>` +
-                           `上四分位數 (Q3): ${q3.toFixed(4)}<br/>` +
-                           `中位數 (Median): ${median.toFixed(4)}<br/>` +
-                           `下四分位數 (Q1): ${q1.toFixed(4)}<br/>` +
-                           `最小值 (Min): ${min.toFixed(4)}`;
+                    return `<strong>${params.name}</strong><br/>` +
+                           `Max: ${max.toFixed(4)}<br/>` +
+                           `Q3: ${q3.toFixed(4)}<br/>` +
+                           `Median: ${median.toFixed(4)}<br/>` +
+                           `Q1: ${q1.toFixed(4)}<br/>` +
+                           `Min: ${min.toFixed(4)}`;
                 } else if (params.seriesType === 'custom') {
                     const [, score, group, id] = params.data;
                     return `<strong>${id}</strong><br/>` +
-                           `分子亞型：${group}<br/>` +
+                           `Subtype: ${group}<br/>` +
                            `${cfg.yName}：<strong>${score.toFixed(4)}</strong>`;
                 }
             }
@@ -307,7 +389,7 @@ function renderSubtypeChart(cfg) {
             {
                 name: 'boxplot',
                 type: 'boxplot',
-                data: boxplotData,
+                data: boxplotToggle.checked ? boxplotData : [],
                 itemStyle: {
                     color: 'rgba(248, 249, 250, 50)',
                     borderColor: '#495057',
@@ -529,6 +611,9 @@ function logGamma(z) {
 function renderTarget() {
     const cfg = targetConfig[targetSelect.value];
     if (!cfg) return;
+    if (cfg.oncoSubtype) { renderOncoplot(cfg); return; }
+
+    showView(cfg.field ? 'scatter' : 'placeholder');
     if (cfg.field) renderSubtypeChart(cfg); else renderPlaceholder(cfg);
     renderModules(cfg);
     document.getElementById('insight-text').innerHTML = cfg.insight || '此目標的統計觀察待補充。';
@@ -554,157 +639,132 @@ function renderTarget() {
 
 }
 
-// 計算 KM 階梯存活曲線與統計指標
-function renderKMChart(cfg) {
-    const kmLabel  = cfg.kmLabel || cfg.yName;
-    const labelHigh = `${kmLabel}-High`;
-    const labelLow  = `${kmLabel}-Low`;
+// 單一組的 KM 階梯曲線
+function computeKM(group) {
+    group.sort((a, b) => a.time - b.time);
+    let survival = 1.0, atRisk = group.length;
+    const curve = [[0, 1.0]];
+    const tp = {};
+    group.forEach(it => {
+        if (!tp[it.time]) tp[it.time] = { events: 0, total: 0 };
+        tp[it.time].total++;
+        if (it.status === 1) tp[it.time].events++;
+    });
+    Object.keys(tp).map(Number).sort((a, b) => a - b).forEach(t => {
+        const { events, total } = tp[t];
+        if (events > 0 && atRisk > 0) survival *= (1 - events / atRisk);
+        curve.push([t, parseFloat(survival.toFixed(4))]);
+        atRisk -= total;
+    });
+    return curve;
+}
 
-    // 1. 篩選有完整存活資料的樣本並排序
-    const validData = dbHypoxiaData
-        .filter(d => d.OS_Time !== null && d.OS_Status !== null && !isNaN(parseFloat(d.OS_Time))
-                     && d[cfg.field] != null && !isNaN(parseFloat(d[cfg.field])))
-        .map(d => ({
-            id: d['Case ID'],
-            score: parseFloat(d[cfg.field]),
-            time: parseFloat(d.OS_Time),
-            status: parseInt(d.OS_Status, 10)
-        }));
+// 畫單一亞型的 KM 圖（用該亞型自己的中位數分高/低組）
+function drawKMForSubtype(sub, data, cfg, labelHigh, labelLow) {
+    const chart = getKMChart(sub);
+    chart.clear();
+    chart.resize();
 
-    if (validData.length === 0) {
-        alert("無可用於 KM 分析的臨床存活期數據！");
-        return;
-    }
-
-    // 2. 取中位數分為 Hypoxia-High 與 Hypoxia-Low 兩組
-    const scores = validData.map(d => d.score).sort((a, b) => a - b);
+    const scores = data.map(d => d.score).sort((a, b) => a - b);
     const median = scores[Math.floor(scores.length / 2)];
+    const highGroup = data.filter(d => d.score >= median);
+    const lowGroup  = data.filter(d => d.score <  median);
 
-    const highGroup = validData.filter(d => d.score >= median);
-    const lowGroup = validData.filter(d => d.score < median);
-
-    // 3. Kaplan-Meier 存活率計算函式
-    function computeKM(group) {
-        group.sort((a, b) => a.time - b.time);
-        let n = group.length;
-        let survival = 1.0;
-        const curve = [[0, 1.0]];
-
-        const timePoints = {};
-        group.forEach(item => {
-            if (!timePoints[item.time]) timePoints[item.time] = { events: 0, total: 0 };
-            timePoints[item.time].total++;
-            if (item.status === 1) timePoints[item.time].events++;
-        });
-
-        const times = Object.keys(timePoints).map(Number).sort((a, b) => a - b);
-        let atRisk = n;
-        times.forEach(t => {
-            const { events, total } = timePoints[t];
-            if (events > 0 && atRisk > 0) {
-                survival *= (1 - events / atRisk);
-            }
-            curve.push([t, parseFloat(survival.toFixed(4))]);
-            atRisk -= total;
-        });
-        return curve;
+    if (data.length < 4 || highGroup.length === 0 || lowGroup.length === 0) {
+        chart.setOption({ title: { text: sub, subtext: '樣本數不足，無法分組', left: 'center', top: 'middle' } });
+        return null;
     }
 
-    const kmHigh = computeKM(highGroup);
-    const kmLow = computeKM(lowGroup);
-
-    // 4. Log-rank 檢定與 HR 近似估算
+    // Log-rank 與 HR
     let oHigh = 0, eHigh = 0, vHigh = 0;
-    const allTimes = Array.from(new Set(validData.map(d => d.time))).sort((a, b) => a - b);
-
+    const totalEvents = data.filter(d => d.status === 1).length;
+    const allTimes = Array.from(new Set(data.map(d => d.time))).sort((a, b) => a - b);
     allTimes.forEach(t => {
         const dHigh = highGroup.filter(d => d.time === t && d.status === 1).length;
-        const dLow = lowGroup.filter(d => d.time === t && d.status === 1).length;
+        const dLow  = lowGroup.filter(d => d.time === t && d.status === 1).length;
         const dTotal = dHigh + dLow;
-
         const nHigh = highGroup.filter(d => d.time >= t).length;
-        const nLow = lowGroup.filter(d => d.time >= t).length;
+        const nLow  = lowGroup.filter(d => d.time >= t).length;
         const nTotal = nHigh + nLow;
-
         if (dTotal > 0 && nTotal > 1) {
-            const e = (nHigh * dTotal) / nTotal;
-            const v = (nHigh * nLow * dTotal * (nTotal - dTotal)) / (nTotal * nTotal * (nTotal - 1));
+            eHigh += (nHigh * dTotal) / nTotal;
+            vHigh += (nHigh * nLow * dTotal * (nTotal - dTotal)) / (nTotal * nTotal * (nTotal - 1));
             oHigh += dHigh;
-            eHigh += e;
-            vHigh += v;
         }
     });
-
-    const zScore = vHigh > 0 ? (oHigh - eHigh) / Math.sqrt(vHigh) : 0;
-    const pValue = (2 * (1 - normalCDF(Math.abs(zScore)))).toFixed(4);
-    const hr = (eHigh > 0 && (validData.filter(d => d.status === 1).length - eHigh) > 0)
-        ? ((oHigh / eHigh) / ((validData.filter(d => d.status === 1).length - oHigh) / (validData.filter(d => d.status === 1).length - eHigh))).toFixed(2)
+    const z = vHigh > 0 ? (oHigh - eHigh) / Math.sqrt(vHigh) : 0;
+    const pValue = (2 * (1 - normalCDF(Math.abs(z)))).toFixed(4);
+    const hr = (eHigh > 0 && (totalEvents - eHigh) > 0)
+        ? ((oHigh / eHigh) / ((totalEvents - oHigh) / (totalEvents - eHigh))).toFixed(2)
         : "1.00";
 
-    // 5. 繪製 ECharts KM 曲線圖
-    myChart.clear();
-    const option = {
+    const nameH = `${labelHigh} (n=${highGroup.length})`;
+    const nameL = `${labelLow} (n=${lowGroup.length})`;
+
+    chart.setOption({
         title: {
-            text: `整體存活期 Kaplan-Meier 分析 (${labelHigh} vs. ${labelLow})`,
-            subtext: `分組依據：中位數 (${median.toFixed(3)}) | Log-rank p = ${pValue} | Hazard Ratio (HR) = ${hr}`,
-            left: 'center',
-            textStyle: { fontSize: 15 }
+            text: `${sub}：${labelHigh} vs. ${labelLow}`,
+            subtext: `median: ${median.toFixed(3)} | Log-rank p = ${pValue} | HR = ${hr}`,
+            left: 'center', textStyle: { fontSize: 15 }
         },
         tooltip: {
             trigger: 'axis',
             formatter: (params) => {
                 let html = `<strong>存活天數：${params[0].value[0]} 天</strong><br/>`;
-                params.forEach(p => {
-                    html += `${p.marker} ${p.seriesName}：${(p.value[1] * 100).toFixed(1)}%<br/>`;
-                });
+                params.forEach(p => { html += `${p.marker} ${p.seriesName}：${(p.value[1] * 100).toFixed(1)}%<br/>`; });
                 return html;
             }
         },
-        legend: {
-            data: [`${labelHigh} (n=${highGroup.length})`, `${labelLow} (n=${lowGroup.length})`],
-            bottom: 0
-        },
+        legend: { data: [nameH, nameL], bottom: 0 },
         grid: { left: '10%', right: '10%', bottom: '15%', containLabel: true },
-        xAxis: {
-            type: 'value',
-            name: '整體存活時間 (Overall Survival, Days)',
-            nameLocation: 'middle',
-            nameGap: 30,
-            splitLine: { lineStyle: { type: 'dashed', color: '#e9ecef' } }
-        },
-        yAxis: {
-            type: 'value',
-            name: '存活機率 (Survival Probability)',
-            nameLocation: 'middle',
-            nameGap: 45,
-            min: 0,
-            max: 1.0,
-            axisLabel: { formatter: (val) => `${val * 100}%` },
-            splitLine: { lineStyle: { type: 'dashed', color: '#e9ecef' } }
-        },
+        xAxis: { type: 'value', name: 'Overall Survival (Days)', nameLocation: 'middle', nameGap: 30,
+                 splitLine: { lineStyle: { type: 'dashed', color: '#e9ecef' } } },
+        yAxis: { type: 'value', name: 'Survival Probability', nameLocation: 'middle', nameGap: 45,
+                 min: 0, max: 1.0, axisLabel: { formatter: v => `${v * 100}%` },
+                 splitLine: { lineStyle: { type: 'dashed', color: '#e9ecef' } } },
         series: [
-            {
-                name: `${labelHigh} (n=${highGroup.length})`,
-                type: 'line',
-                step: 'end',
-                data: kmHigh,
-                lineStyle: { width: 2.5, color: '#dc3545' },
-                itemStyle: { color: '#dc3545' }
-            },
-            {
-                name: `${labelLow} (n=${lowGroup.length})`,                type: 'line',
-                step: 'end',
-                data: kmLow,
-                lineStyle: { width: 2.5, color: '#0d6efd' },
-                itemStyle: { color: '#0d6efd' }
-            }
+            { name: nameH, type: 'line', step: 'end', data: computeKM(highGroup),
+              lineStyle: { width: 2.5, color: '#dc3545' }, itemStyle: { color: '#dc3545' } },
+            { name: nameL, type: 'line', step: 'end', data: computeKM(lowGroup),
+              lineStyle: { width: 2.5, color: '#0d6efd' }, itemStyle: { color: '#0d6efd' } }
         ]
-    };
-    myChart.setOption(option);
+    });
+    return { sub, n: data.length, median, hr, pValue };
+}
 
-    // 更新下方洞察文字
-    document.getElementById("insight-text").innerHTML = 
-        `以 ${cfg.yName} 中位數（${median.toFixed(3)}）分組，${labelHigh} 組在整體存活期（OS）之預後表現與 Low 組相比（HR: <strong>${hr}</strong>, Log-rank p-value: <strong>${pValue}</strong>）。`;}
+// 點「預後分析」：三個亞型各畫一張
+function renderKMChart(cfg) {
+    const kmLabel   = cfg.kmLabel || cfg.yName;
+    const labelHigh = `${kmLabel}-High`;
+    const labelLow  = `${kmLabel}-Low`;
+
+    const allValid = dbHypoxiaData
+        .filter(d => d.OS_Time !== null && d.OS_Status !== null && !isNaN(parseFloat(d.OS_Time))
+                     && d[cfg.field] != null && !isNaN(parseFloat(d[cfg.field])))
+        .map(d => ({
+            id: d['Case ID'],
+            subtype: d.MolecularSubtype,
+            score: parseFloat(d[cfg.field]),
+            time: parseFloat(d.OS_Time),
+            status: parseInt(d.OS_Status, 10)
+        }));
+
+    if (allValid.length === 0) {
+        alert("無可用於 KM 分析的臨床存活期數據！");
+        return;
+    }
+
+    showView('km');   // 先顯示容器，ECharts 才量得到尺寸
+
+    const results = kmSubtypes.map(sub =>
+        drawKMForSubtype(sub, allValid.filter(d => d.subtype === sub), cfg, labelHigh, labelLow)
+    ).filter(Boolean);
+
+    document.getElementById('insight-text').innerHTML = results.map(r =>
+        `<strong>${r.sub}</strong>（n=${r.n}，median: ${r.median.toFixed(3)}）：` +
+        `HR = <strong>${r.hr}</strong>，Log-rank p = <strong>${r.pValue}</strong>`
+    ).join('<br>');
+}
 
 // 常態分佈累積函數近似算法 (計算 Log-rank p-value 用)
 function normalCDF(x) {
@@ -717,7 +777,9 @@ function normalCDF(x) {
 // 點擊「預後分析」按鈕時，切換為 KM 曲線圖
 function updateChart() {
     const cfg = targetConfig[targetSelect.value];
-    if (cfg && cfg.field) {
+    if (cfg && cfg.oncoSubtype) {          // Gene Mutation：單基因突變 KM
+        renderMutationKM(cfg);
+    } else if (cfg && cfg.field) {         // TME：原本的高低表現 KM
         renderKMChart(cfg);
     }
 }
@@ -748,5 +810,19 @@ myChart.on('click', function(params) {
     }
 });
 
+// 切換 Boxplot 顯示/隱藏（只更新 boxplot 那個 series，散布點不會重新抖動）
+boxplotToggle.addEventListener('change', () => {
+    myChart.setOption({
+        series: [
+            {},   // 第 0 個：散布點，不變
+            { data: boxplotToggle.checked ? currentBoxplotData : [] }   // 第 1 個：boxplot
+        ]
+    });
+});
+
 // 視窗縮放時自動調整圖表大小
-window.addEventListener('resize', () => myChart.resize());
+// window.addEventListener('resize', () => myChart.resize());
+window.addEventListener('resize', () => {
+    myChart.resize();
+    Object.values(kmCharts).forEach(c => c.resize());
+});

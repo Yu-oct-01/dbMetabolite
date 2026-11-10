@@ -21,7 +21,6 @@ $allFields = [
     'progression or recurrence'         => 'Progression or Recurrence',
     'last known disease status'         => 'Last Known Disease Status',
     'days to last known disease status' => 'Days to Last Known Disease Status',
-    'drug resistance'                   => 'Drug Resistance',
 
     'os_time'                           => 'OS Time',
     'os_state'                          => 'OS Status',
@@ -34,7 +33,8 @@ $allFields = [
 
 $diseaseOptions = [
     'glioma(gbm)' => 'Glioma(GBM)',
-    'others' => 'Others',
+    'disease2' => 'Disease2',
+    'disease3' => 'Disease3',
 ];
 
 // 疾病 key → metabolite_data_source 的 disease_name
@@ -78,6 +78,7 @@ $existingCols = [
     'race'                              => 'Race',
     'diagnosis_age'                     => 'Age at Diagnosis',
     'disease_type'                      => 'Disease Type',
+    'molecular_subtype'                 => 'MolecularSubtype',
     'primary_site'                      => 'Primary Site',
     'site of resection or biopsy'       => 'Site of Resection or Biopsy',
     'vital status'                      => 'Vital Status',
@@ -143,14 +144,20 @@ if (!empty($_GET['diseases'])) {
         }
 
         // 組合要 SELECT 的欄位
-        $selectCols = [$primaryKey];
+        // 來自 gbm_immune_data 的欄位（$allFields 的 key => 實際欄位名）
+        $immuneFields = ['molecular_subtype' => 'MolecularSubtype'];
+
+        $selectCols = ["`c`.`$primaryKey`"];
         foreach ($selectedFields as $f) {
-            if (isset($existingCols[$f])) {
-                $selectCols[] = $existingCols[$f];
+            if (!isset($existingCols[$f])) continue;
+            if (isset($immuneFields[$f])) {
+                $selectCols[] = "`i`.`{$immuneFields[$f]}`";   // 從 immune 表撈
+            } else {
+                $selectCols[] = "`c`.`{$existingCols[$f]}`";   // 從臨床表撈
             }
         }
         $selectCols = array_unique($selectCols);
-        $colsSql    = implode(', ', array_map(fn($c) => "`$c`", $selectCols));
+        $colsSql    = implode(', ', $selectCols);
 
         // 組合 UNION：每個選定的 project 各產生一段 SELECT，並注入固定的 project_number 欄位
         $unionParts = [];
@@ -158,7 +165,10 @@ if (!empty($_GET['diseases'])) {
             if (!isset($projectTableMap[$pdc])) continue;
             $tbl         = $projectTableMap[$pdc];
             $pdcEscaped  = addslashes($pdc);
-            $unionParts[] = "SELECT $colsSql, '$pdcEscaped' AS `_project` FROM `$tbl`";
+            $unionParts[] = "SELECT $colsSql, '$pdcEscaped' AS `_project`
+                            FROM `$tbl` AS c
+                            LEFT JOIN `gbm_immune_data` AS i
+                                    ON c.`$primaryKey` = i.`Case ID`";
         }
 
         if (empty($unionParts)) {
@@ -285,7 +295,12 @@ function pageUrl(int $p): string {
         <!-- 分頁（上） -->
         <?php include BASE_PATH . 'includes/pagination.php'; ?>
 
-        <div class="table-scroll">
+
+        <div class="table-scroll-top" id="tableScrollTop">
+            <div id="tableScrollTopInner"></div>
+        </div>
+
+        <div class="table-scroll" id="tableScrollMain">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -455,6 +470,33 @@ function loadProjects() {
 if (document.querySelectorAll('input[name="diseases[]"]:checked').length > 0) {
     loadProjects();
 }
+
+/* ── 表格上下滑桿同步 ── */
+(function () {
+    const top    = document.getElementById('tableScrollTop');
+    const inner  = document.getElementById('tableScrollTopInner');
+    const main   = document.getElementById('tableScrollMain');
+    if (!top || !inner || !main) return;
+
+    function syncWidth() {
+        // 讓頂部滑桿的內容寬度 = 表格實際寬度
+        inner.style.width = main.scrollWidth + 'px';
+        // 若不需要橫向捲動，就隱藏頂部滑桿
+        top.style.display = (main.scrollWidth > main.clientWidth) ? 'block' : 'none';
+    }
+
+    let lock = false;
+    top.addEventListener('scroll', function () {
+        if (main.scrollLeft !== top.scrollLeft) main.scrollLeft = top.scrollLeft;
+    });
+    main.addEventListener('scroll', function () {
+        if (top.scrollLeft !== main.scrollLeft) top.scrollLeft = main.scrollLeft;
+    });
+
+    window.addEventListener('load', syncWidth);
+    window.addEventListener('resize', syncWidth);
+    syncWidth();
+})();
 </script>
 </body>
 </html>

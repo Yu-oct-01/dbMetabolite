@@ -22,7 +22,8 @@ $allFields = [
 
 $diseaseOptions = [
     'glioma(gbm)' => 'Glioma(GBM)',
-    'others' => 'Others',
+    'disease2' => 'Disease2',
+    'disease3' => 'Disease3',
 ];
 
 // 疾病 → disease_name 的對應（用來查 metabolite_data_source）
@@ -549,8 +550,8 @@ function sortUrl(string $field): string {
                                         <span><?= htmlspecialchars($allFields[$f]) ?></span>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>Pathway Info:</strong><br>
-                                            <!-- <span style="color: #f87171;">■ Red tag</span>: Positively Correlated ($r > 0)<br>
-                                            <span style="color: #60a5fa;">■ Blue tag</span>: Negatively Correlated ($r < 0) -->
+                                            <span style="color: #f87171;">■ Red tag</span>: Positively Correlated (r > 0)<br>
+                                            <span style="color: #60a5fa;">■ Blue tag</span>: Negatively Correlated (r < 0)
                                         </div>
                                     </div>
                                 <?php elseif ($f === 'os_hazard_ratio'): ?>
@@ -558,7 +559,8 @@ function sortUrl(string $field): string {
                                         <span class="info-icon">i</span>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>OS Hazard Ratio Info:</strong><br>
-                                            Tap to view HR、p-value for each sample.                                        
+                                            1. Tap the sample name to view HR、p-value for each sample. <br>
+                                            2. Click to sort the data.                                       
                                         </div>
                                         <a href="<?= htmlspecialchars(sortUrl('os_hazard_ratio')) ?>" class="sortable-th">
                                             <span><?= htmlspecialchars($allFields[$f]) ?></span>
@@ -570,7 +572,8 @@ function sortUrl(string $field): string {
                                         <span class="info-icon">i</span>
                                         <div class="tooltip-box tooltip-box-wide">
                                             <strong>PFS Hazard Ratio Info:</strong><br>
-                                            Tap to view HR、p-value for each sample.
+                                            1. Tap the sample name to view HR、p-value for each sample.<br>
+                                            2. Click to sort the data.
                                         </div>
                                         <a href="<?= htmlspecialchars(sortUrl('pfs_hazard_ratio')) ?>" class="sortable-th">
                                             <span><?= htmlspecialchars($allFields[$f]) ?></span>

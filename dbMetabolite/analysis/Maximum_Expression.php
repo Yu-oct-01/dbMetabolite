@@ -42,12 +42,47 @@ include_once __DIR__ . '/../includes/navbar.php';
         .chart-scroll-wrapper::-webkit-scrollbar-thumb:hover {
             background: #64748b;
         }
+        .btn-back {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+            white-space: nowrap;
+        }
+
+        .btn-back:hover {
+            background: #7f8c8d;
+        }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 15px;">
-        <h2>Metabolite Maximum Expression</h2>
-        <p style="color: #64748b; margin-bottom: 15px;">
+    <div class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 20px;">
+        <!-- 頁首標題與按鈕容器 -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <!-- 左側按鈕區（留有左邊距與固定寬度） -->
+            <div style="flex: 1; text-align: left;">
+                <a href="javascript:history.back();" class="btn-back">
+                    <i class="fa-solid fa-arrow-left me-1"></i>← Previous page
+                </a>
+            </div>
+
+            <!-- 中間標題區（絕對置中） -->
+            <div style="flex: 2; text-align: center;">
+                <h2 style="margin: 0;">Metabolite Maximum Expression</h2>
+            </div>
+
+            <!-- 右側等寬平衡區 -->
+            <div style="flex: 1;"></div>
+        </div>
+
+        <!-- 註解文字置中 -->
+        <p style="color: #64748b; margin-bottom: 20px; text-align: center;">
             Drag the slider below to view all metabolites.
         </p>
 
